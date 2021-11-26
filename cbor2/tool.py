@@ -45,9 +45,10 @@ default_encoders = OrderedDict(
 
 class TagHook(TagHandler):
     __slots__ = ('ignore_tags',)
-    def __init__(self, decoder):
-        super().__init__(decoder)
+    def __init__(self, ignore_tags=None):
+        super().__init__()
         self.handlers[24] = self.embedded
+        self.ignore_tags = ignore_tags or set()
 
     def __call__(self, tag):
         if tag.tag in self.ignore_tags:
@@ -56,7 +57,7 @@ class TagHook(TagHandler):
         if handler is None:
             if self.decoder.immutable:
                 return f"CBORTag:{tag.tag}:{tag.value!r}"
-            return tag
+            return {"$tag": tag.tag, "$value": tag.value}
         return handler(tag.value)
 
 
@@ -193,8 +194,7 @@ def main():
     else:
         droptags = set()
 
-    my_hook = TagHook
-    my_hook.ignore_tags = droptags
+    my_hook = TagHook(droptags)
 
     with open(outfile, **opener) as outfile:
         for infile in infiles:

@@ -97,7 +97,8 @@
     ],
     "tagged": [
         {
-            "CBORTag:6000": "Hello"
+            "$tag": 6000,
+            "$value": "Hello"
         }
     ],
     "timestamps": [

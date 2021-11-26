@@ -87,20 +87,20 @@ def test_tag_repr(impl):
 
 
 def test_simple_value_repr(impl):
-    assert repr(impl.CBORSimpleValue(1)) == "CBORSimpleValue(value=1)"
+    assert repr(impl.CBORSimpleValue(1)) == "<CBORSimpleValue._001: 1>"
 
 
 def test_simple_value_equals(impl):
     tag1 = impl.CBORSimpleValue(1)
     tag2 = impl.CBORSimpleValue(1)
-    tag3 = impl.CBORSimpleValue(21)
+    tag3 = impl.CBORSimpleValue(32)
     tag4 = impl.CBORSimpleValue(99)
     assert tag1 == tag2
     assert tag1 == 1
-    assert not tag2 == "21"
+    assert not tag2 == "32"
     assert tag1 != tag3
-    assert tag1 != 21
-    assert tag2 != "21"
+    assert tag1 != 32
+    assert tag2 != "32"
     assert tag4 > tag1
     assert tag4 >= tag3
     assert 99 <= tag4
@@ -120,9 +120,9 @@ def test_simple_ordering(impl):
 
 
 def test_simple_value_too_big(impl):
-    with pytest.raises(TypeError) as exc:
+    with pytest.raises(ValueError) as exc:
         impl.CBORSimpleValue(256)
-        assert str(exc.value) == "simple value out of range (0..255)"
+        assert str(exc.value) == '256 is not a valid CBORSimpleValue'
 
 
 def test_frozendict():

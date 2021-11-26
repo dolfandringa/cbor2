@@ -14,7 +14,7 @@ class TagHandler(object):
 
     __slots__ = ("handlers", "decoder")
 
-    def __init__(self, decoder):
+    def __init__(self):
         self.handlers = {
             0: self.isodatetime,
             1: self.epochdatetime,
@@ -32,7 +32,6 @@ class TagHandler(object):
             261: self.ipnetwork,
             55799: lambda x: x,
         }
-        self.decoder = decoder
 
     def __call__(self, tag):
         handler = self.handlers.get(tag.tag)
