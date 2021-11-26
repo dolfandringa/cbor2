@@ -92,7 +92,7 @@
     ],
     "tag_as_key": [
         {
-            "CBORtag:6007:notimportant": null
+            "CBORTag:6007:'notimportant'": null
         }
     ],
     "tagged": [

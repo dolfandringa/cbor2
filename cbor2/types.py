@@ -1,7 +1,7 @@
-from collections import namedtuple
 from collections.abc import Mapping
 from functools import total_ordering
 from reprlib import recursive_repr
+from enum import IntEnum
 
 
 class CBORError(Exception):
@@ -67,50 +67,9 @@ class CBORTag:
         return hash((self.tag, self.value))
 
 
-class CBORSimpleValue(namedtuple("CBORSimpleValue", ["value"])):
-    """
-    Represents a CBOR "simple value".
-
-    :param int value: the value (0-255)
-    """
-
-    __slots__ = ()
-    __hash__ = namedtuple.__hash__
-
-    def __new__(cls, value):
-        if value < 0 or value > 255:
-            raise TypeError("simple value out of range (0..255)")
-        return super().__new__(cls, value)
-
-    def __eq__(self, other):
-        if isinstance(other, int):
-            return self.value == other
-        return super().__eq__(other)
-
-    def __ne__(self, other):
-        if isinstance(other, int):
-            return self.value != other
-        return super().__ne__(other)
-
-    def __lt__(self, other):
-        if isinstance(other, int):
-            return self.value < other
-        return super().__lt__(other)
-
-    def __le__(self, other):
-        if isinstance(other, int):
-            return self.value <= other
-        return super().__le__(other)
-
-    def __ge__(self, other):
-        if isinstance(other, int):
-            return self.value >= other
-        return super().__ge__(other)
-
-    def __gt__(self, other):
-        if isinstance(other, int):
-            return self.value > other
-        return super().__gt__(other)
+_simple_values_lo = [(f'_{n:03d}', n) for n in range(20)]
+_simple_values_hi = [(f'_{n:03d}', n) for n in range(32, 256)]
+CBORSimpleValue = IntEnum('SimpleValue', _simple_values_lo + _simple_values_hi)
 
 
 class FrozenDict(Mapping):

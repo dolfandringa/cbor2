@@ -1,8 +1,6 @@
 import re
 import struct
 import sys
-from collections.abc import Mapping
-from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
 from .types import (
@@ -14,6 +12,8 @@ from .types import (
     break_marker,
     undefined,
 )
+
+from .tag_handler import TagHandler
 
 timestamp_re = re.compile(
     r"^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)"
@@ -59,7 +59,10 @@ class CBORDecoder:
 
     def __init__(self, fp, tag_hook=None, object_hook=None, str_errors="strict"):
         self.fp = fp
-        self.tag_hook = tag_hook
+        if tag_hook is not None:
+            self.tag_hook = tag_hook(self)
+        else:
+            self.tag_hook = TagHandler(self)
         self.object_hook = object_hook
         self.str_errors = str_errors
         self._share_index = None
@@ -374,16 +377,38 @@ class CBORDecoder:
     def decode_semantic(self, subtype):
         # Major tag 6
         tagnum = self._decode_length(subtype)
-        semantic_decoder = semantic_decoders.get(tagnum)
-        if semantic_decoder:
-            return semantic_decoder(self)
-        else:
-            tag = CBORTag(tagnum, None)
-            self.set_shareable(tag)
-            tag.value = self._decode(unshared=True)
-            if self._tag_hook:
-                tag = self._tag_hook(self, tag)
-            return self.set_shareable(tag)
+        # special handling for tags that modify the decoder
+        if tagnum == 28:
+            old_index = self._share_index
+            self._share_index = len(self._shareables)
+            self._shareables.append(None)
+            try:
+                return self._decode()
+            finally:
+                self._share_index = old_index
+        if tagnum == 29:
+            index = self._decode(unshared=True)
+            try:
+                shared = self._shareables[index]
+            except IndexError:
+                raise CBORDecodeValueError('shared reference %d not found' % index)
+            if shared is None:
+                raise CBORDecodeValueError(
+                    'shared value %d has not been initialized' % index)
+            else:
+                return shared
+        if tagnum == 256:
+            old_namespace = self._stringref_namespace
+            self._stringref_namespace = []
+            value = self._decode(unshared=True)
+            self._stringref_namespace = old_namespace
+            return value
+        tag = CBORTag(tagnum, None)
+        self.set_shareable(tag)
+        immutable = self.immutable or tagnum == 258
+        tag.value = self._decode(unshared=True, immutable=immutable)
+        tag = self._tag_hook(tag)
+        return self.set_shareable(tag)
 
     def decode_special(self, subtype):
         # Simple value
@@ -398,195 +423,6 @@ class CBORDecoder:
             raise CBORDecodeValueError(
                 "Undefined Reserved major type 7 subtype 0x%x" % subtype
             ) from e
-
-    #
-    # Semantic decoders (major tag 6)
-    #
-
-    def decode_datetime_string(self):
-        # Semantic tag 0
-        value = self._decode()
-        match = timestamp_re.match(value)
-        if match:
-            (
-                year,
-                month,
-                day,
-                hour,
-                minute,
-                second,
-                secfrac,
-                offset_h,
-                offset_m,
-            ) = match.groups()
-            if secfrac is None:
-                microsecond = 0
-            else:
-                microsecond = int(f"{secfrac:<06}")
-
-            if offset_h:
-                tz = timezone(timedelta(hours=int(offset_h), minutes=int(offset_m)))
-            else:
-                tz = timezone.utc
-
-            return self.set_shareable(
-                datetime(
-                    int(year),
-                    int(month),
-                    int(day),
-                    int(hour),
-                    int(minute),
-                    int(second),
-                    microsecond,
-                    tz,
-                )
-            )
-        else:
-            raise CBORDecodeValueError(f"invalid datetime string: {value!r}")
-
-    def decode_epoch_datetime(self):
-        # Semantic tag 1
-        value = self._decode()
-        return self.set_shareable(datetime.fromtimestamp(value, timezone.utc))
-
-    def decode_positive_bignum(self):
-        # Semantic tag 2
-        from binascii import hexlify
-
-        value = self._decode()
-        if not isinstance(value, bytes):
-            raise CBORDecodeValueError("invalid bignum value " + str(value))
-        return self.set_shareable(int(hexlify(value), 16))
-
-    def decode_negative_bignum(self):
-        # Semantic tag 3
-        return self.set_shareable(-self.decode_positive_bignum() - 1)
-
-    def decode_fraction(self):
-        # Semantic tag 4
-        from decimal import Decimal
-
-        try:
-            exp, sig = self._decode()
-        except (TypeError, ValueError) as e:
-            raise CBORDecodeValueError("Incorrect tag 4 payload") from e
-        tmp = Decimal(sig).as_tuple()
-        return self.set_shareable(Decimal((tmp.sign, tmp.digits, exp)))
-
-    def decode_bigfloat(self):
-        # Semantic tag 5
-        from decimal import Decimal
-
-        try:
-            exp, sig = self._decode()
-        except (TypeError, ValueError) as e:
-            raise CBORDecodeValueError("Incorrect tag 5 payload") from e
-        return self.set_shareable(Decimal(sig) * (2 ** Decimal(exp)))
-
-    def decode_stringref(self):
-        # Semantic tag 25
-        if self._stringref_namespace is None:
-            raise CBORDecodeValueError("string reference outside of namespace")
-
-        index = self._decode()
-        try:
-            value = self._stringref_namespace[index]
-        except IndexError:
-            raise CBORDecodeValueError("string reference %d not found" % index)
-
-        return value
-
-    def decode_shareable(self):
-        # Semantic tag 28
-        old_index = self._share_index
-        self._share_index = len(self._shareables)
-        self._shareables.append(None)
-        try:
-            return self._decode()
-        finally:
-            self._share_index = old_index
-
-    def decode_sharedref(self):
-        # Semantic tag 29
-        value = self._decode(unshared=True)
-        try:
-            shared = self._shareables[value]
-        except IndexError:
-            raise CBORDecodeValueError("shared reference %d not found" % value)
-
-        if shared is None:
-            raise CBORDecodeValueError(
-                "shared value %d has not been initialized" % value
-            )
-        else:
-            return shared
-
-    def decode_rational(self):
-        # Semantic tag 30
-        from fractions import Fraction
-
-        return self.set_shareable(Fraction(*self._decode()))
-
-    def decode_regexp(self):
-        # Semantic tag 35
-        return self.set_shareable(re.compile(self._decode()))
-
-    def decode_mime(self):
-        # Semantic tag 36
-        from email.parser import Parser
-
-        return self.set_shareable(Parser().parsestr(self._decode()))
-
-    def decode_uuid(self):
-        # Semantic tag 37
-        from uuid import UUID
-
-        return self.set_shareable(UUID(bytes=self._decode()))
-
-    def decode_stringref_namespace(self):
-        # Semantic tag 256
-        old_namespace = self._stringref_namespace
-        self._stringref_namespace = []
-        value = self._decode()
-        self._stringref_namespace = old_namespace
-        return value
-
-    def decode_set(self):
-        # Semantic tag 258
-        if self._immutable:
-            return self.set_shareable(frozenset(self._decode(immutable=True)))
-        else:
-            return self.set_shareable(set(self._decode(immutable=True)))
-
-    def decode_ipaddress(self):
-        # Semantic tag 260
-        from ipaddress import ip_address
-
-        buf = self.decode()
-        if not isinstance(buf, bytes) or len(buf) not in (4, 6, 16):
-            raise CBORDecodeValueError("invalid ipaddress value %r" % buf)
-        elif len(buf) in (4, 16):
-            return self.set_shareable(ip_address(buf))
-        elif len(buf) == 6:
-            # MAC address
-            return self.set_shareable(CBORTag(260, buf))
-
-    def decode_ipnetwork(self):
-        # Semantic tag 261
-        from ipaddress import ip_network
-
-        net_map = self.decode()
-        if isinstance(net_map, Mapping) and len(net_map) == 1:
-            for net in net_map.items():
-                try:
-                    return self.set_shareable(ip_network(net, strict=False))
-                except (TypeError, ValueError):
-                    break
-        raise CBORDecodeValueError("invalid ipnetwork value %r" % net_map)
-
-    def decode_self_describe_cbor(self):
-        # Semantic tag 55799
-        return self._decode()
 
     #
     # Special decoders (major tag 7)
@@ -629,27 +465,6 @@ special_decoders = {
     26: CBORDecoder.decode_float32,
     27: CBORDecoder.decode_float64,
     31: lambda self: break_marker,
-}
-
-semantic_decoders = {
-    0: CBORDecoder.decode_datetime_string,
-    1: CBORDecoder.decode_epoch_datetime,
-    2: CBORDecoder.decode_positive_bignum,
-    3: CBORDecoder.decode_negative_bignum,
-    4: CBORDecoder.decode_fraction,
-    5: CBORDecoder.decode_bigfloat,
-    25: CBORDecoder.decode_stringref,
-    28: CBORDecoder.decode_shareable,
-    29: CBORDecoder.decode_sharedref,
-    30: CBORDecoder.decode_rational,
-    35: CBORDecoder.decode_regexp,
-    36: CBORDecoder.decode_mime,
-    37: CBORDecoder.decode_uuid,
-    256: CBORDecoder.decode_stringref_namespace,
-    258: CBORDecoder.decode_set,
-    260: CBORDecoder.decode_ipaddress,
-    261: CBORDecoder.decode_ipnetwork,
-    55799: CBORDecoder.decode_self_describe_cbor,
 }
 
 

@@ -13,13 +13,14 @@ from collections import OrderedDict
 from datetime import datetime
 from functools import partial
 
-from . import CBORDecoder, load
+from .decoder import CBORDecoder, load
 from .types import FrozenDict
+from .tag_handler import TagHandler
 
-try:
-    from _cbor2 import CBORSimpleValue, CBORTag, undefined
-except ImportError:
-    from .types import CBORSimpleValue, CBORTag, undefined
+#try:
+    #from _cbor2 import CBORSimpleValue, CBORTag, undefined
+#except ImportError:
+from .types import CBORSimpleValue, CBORTag, undefined
 
 
 default_encoders = OrderedDict(
@@ -42,16 +43,25 @@ default_encoders = OrderedDict(
     ]
 )
 
+class TagHook(TagHandler):
+    __slots__ = ('ignore_tags',)
+    def __init__(self, decoder):
+        super().__init__(decoder)
+        self.handlers[24] = self.embedded
 
-def tag_hook(decoder, tag, ignore_tags=set()):
-    if tag.tag in ignore_tags:
-        return tag.value
-    if tag.tag == 24:
-        return decoder.decode_from_bytes(tag.value)
-    else:
-        if decoder.immutable:
-            return f"CBORtag:{tag.tag}:{tag.value}"
-        return tag
+    def __call__(self, tag):
+        if tag.tag in self.ignore_tags:
+            return tag.value
+        handler = self.handlers.get(tag.tag)
+        if handler is None:
+            if self.decoder.immutable:
+                return f"CBORTag:{tag.tag}:{tag.value!r}"
+            return tag
+        return handler(tag.value)
+
+
+    def embedded(self, value):
+        return self.decoder.decode_from_bytes(value)
 
 
 class DefaultEncoder(json.JSONEncoder):
@@ -183,7 +193,8 @@ def main():
     else:
         droptags = set()
 
-    my_hook = partial(tag_hook, ignore_tags=droptags)
+    my_hook = TagHook
+    my_hook.ignore_tags = droptags
 
     with open(outfile, **opener) as outfile:
         for infile in infiles:
