@@ -73,6 +73,7 @@ extern PyObject *_CBOR2_str_update;
 extern PyObject *_CBOR2_str_utc;
 extern PyObject *_CBOR2_str_utc_suffix;
 extern PyObject *_CBOR2_str_UUID;
+extern PyObject *_CBOR2_str_TagHandler;
 extern PyObject *_CBOR2_str_write;
 
 // Exception classes
@@ -92,6 +93,7 @@ extern PyObject *_CBOR2_Decimal;
 extern PyObject *_CBOR2_Fraction;
 extern PyObject *_CBOR2_FrozenDict;
 extern PyObject *_CBOR2_UUID;
+extern PyObject *_CBOR2_TagHandler;
 extern PyObject *_CBOR2_Parser;
 extern PyObject *_CBOR2_re_compile;
 extern PyObject *_CBOR2_datestr_re;
@@ -105,6 +107,7 @@ int _CBOR2_init_Decimal(void);
 int _CBOR2_init_Fraction(void);
 int _CBOR2_init_FrozenDict(void);
 int _CBOR2_init_UUID(void);
+int _CBOR2_init_TagHandler(void);
 int _CBOR2_init_Parser(void);
 int _CBOR2_init_re_compile(void); // also handles datestr_re
 int _CBOR2_init_ip_address(void);

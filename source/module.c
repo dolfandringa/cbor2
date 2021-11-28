@@ -476,6 +476,31 @@ error:
     return -1;
 }
 
+int
+_CBOR2_init_TagHandler(void)
+{
+    PyObject *module;
+    PyObject *class;
+
+    // from cbor2.tag_handler import TagHandler
+    module = PyImport_ImportModule("cbor2.tag_handler");
+    if (!module)
+        goto error;
+    class = PyObject_GetAttrString(module, "TagHandler");
+    Py_DECREF(module);
+    if (!class)
+        goto error;
+    Py_DECREF(class);
+    _CBOR2_TagHandler = PyObject_CallFunctionObjArgs(
+            class, NULL);
+    if (!_CBOR2_TagHandler)
+        goto error;
+    return 0;
+error:
+    PyErr_SetString(PyExc_ImportError, "unable to import TagHandler from cbor2.tag_handler");
+    return -1;
+}
+
 
 int
 _CBOR2_init_re_compile(void)
@@ -621,6 +646,7 @@ PyObject *_CBOR2_str_update = NULL;
 PyObject *_CBOR2_str_utc = NULL;
 PyObject *_CBOR2_str_utc_suffix = NULL;
 PyObject *_CBOR2_str_UUID = NULL;
+PyObject *_CBOR2_str_TagHandler = NULL;
 PyObject *_CBOR2_str_write = NULL;
 
 PyObject *_CBOR2_CBORError = NULL;
@@ -638,6 +664,7 @@ PyObject *_CBOR2_Decimal = NULL;
 PyObject *_CBOR2_Fraction = NULL;
 PyObject *_CBOR2_FrozenDict = NULL;
 PyObject *_CBOR2_UUID = NULL;
+PyObject *_CBOR2_TagHandler = NULL;
 PyObject *_CBOR2_Parser = NULL;
 PyObject *_CBOR2_re_compile = NULL;
 PyObject *_CBOR2_datestr_re = NULL;
@@ -656,6 +683,7 @@ cbor2_free(PyObject *m)
     Py_CLEAR(_CBOR2_Decimal);
     Py_CLEAR(_CBOR2_Fraction);
     Py_CLEAR(_CBOR2_UUID);
+    Py_CLEAR(_CBOR2_TagHandler);
     Py_CLEAR(_CBOR2_Parser);
     Py_CLEAR(_CBOR2_re_compile);
     Py_CLEAR(_CBOR2_datestr_re);

@@ -88,18 +88,6 @@ def test_decode_from_bytes(impl):
             decoder.decode_from_bytes("foo")
 
 
-def test_immutable_attr(impl):
-    with BytesIO(unhexlify("d917706548656c6c6f")) as stream:
-        decoder = impl.CBORDecoder(stream)
-        assert not decoder.immutable
-
-        def tag_hook(decoder, tag):
-            assert decoder.immutable
-            return tag.value
-
-        decoder.decode()
-
-
 def test_load(impl):
     with pytest.raises(TypeError):
         impl.load()
@@ -341,36 +329,6 @@ def test_premature_end_of_stream(impl):
             r"premature end of stream \(expected to read 3 bytes, got 2 instead\)"
         )
         assert isinstance(exc, EOFError)
-
-
-def test_tag_hook(impl):
-    def reverse(decoder):
-        return lambda tag: tag.value[::-1]
-
-    decoded = impl.loads(unhexlify("d917706548656c6c6f"), tag_hook=reverse)
-    assert decoded == "olleH"
-
-
-def test_tag_hook_cyclic(impl):
-    class DummyType:
-        def __init__(self, value):
-            self.value = value
-
-    class unmarshal_dummy(object):
-        def __init__(self, decoder):
-            self.decoder = decoder
-
-        def __call__(self, tag):
-            instance = DummyType.__new__(DummyType)
-            self.decoder.set_shareable(instance)
-            instance.value = self.decoder.decode_from_bytes(tag.value)
-            return instance
-
-    decoded = impl.loads(
-        unhexlify("D81CD90BB849D81CD90BB843D81D00"), tag_hook=unmarshal_dummy
-    )
-    assert isinstance(decoded, DummyType)
-    assert decoded.value.value is decoded
 
 
 def test_object_hook(impl):

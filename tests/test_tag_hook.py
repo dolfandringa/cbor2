@@ -7,6 +7,8 @@ from fractions import Fraction
 from ipaddress import ip_address, ip_network
 from uuid import UUID
 import re
+from cbor2.tag_handler import tag_hook, TagHandler
+from cbor2.types import CBORDecodeError
 
 #
 # Tests for extension tags
@@ -140,27 +142,29 @@ def test_uuid(impl):
             "d901045020010db885a3000000008a2e03707334",
             ip_address("2001:db8:85a3::8a2e:370:7334"),
         ),
-        ("d9010446010203040506", (260, b"\x01\x02\x03\x04\x05\x06")),
     ],
     ids=[
         "ipv4",
         "ipv6",
-        "mac",
     ],
 )
 def test_ipaddress(impl, payload, expected):
-    if isinstance(expected, tuple):
-        expected = impl.CBORTag(*expected)
     payload = unhexlify(payload)
-    assert impl.loads(payload) == expected
+    result = impl.loads(payload)
+    assert result == expected
+
+def test_macaddress(impl):
+    payload, expected = ("d9010446010203040506", (260, b"\x01\x02\x03\x04\x05\x06"))
+    result = impl.loads(unhexlify(payload))
+    assert (result.tag, result.value) == expected
 
 
 def test_bad_ipaddress(impl):
-    with pytest.raises(impl.CBORDecodeError) as exc:
+    with pytest.raises(CBORDecodeError) as exc:
         impl.loads(unhexlify("d9010443c00a0a"))
         assert str(exc.value).endswith("invalid ipaddress value %r" % b"\xc0\x0a\x0a")
         assert isinstance(exc, ValueError)
-    with pytest.raises(impl.CBORDecodeError) as exc:
+    with pytest.raises(CBORDecodeError) as exc:
         impl.loads(unhexlify("d9010401"))
         assert str(exc.value).endswith("invalid ipaddress value 1")
         assert isinstance(exc, ValueError)
@@ -189,14 +193,14 @@ def test_ipnetwork(impl, payload, expected):
 
 
 def test_bad_ipnetwork(impl):
-    with pytest.raises(impl.CBORDecodeError) as exc:
+    with pytest.raises(CBORDecodeError) as exc:
         impl.loads(unhexlify("d90105a244c0a80064181844c0a800001818"))
         assert str(exc.value).endswith(
             "invalid ipnetwork value %r"
             % {b"\xc0\xa8\x00d": 24, b"\xc0\xa8\x00\x00": 24}
         )
         assert isinstance(exc, ValueError)
-    with pytest.raises(impl.CBORDecodeError) as exc:
+    with pytest.raises(CBORDecodeError) as exc:
         impl.loads(unhexlify("d90105a144c0a80064420102"))
         assert str(exc.value).endswith(
             "invalid ipnetwork value %r" % {b"\xc0\xa8\x00d": b"\x01\x02"}
@@ -305,3 +309,56 @@ def test_decimal_payload_unpacking(impl, data, expected):
     with pytest.raises(impl.CBORDecodeValueError) as exc_info:
         impl.loads(unhexlify(data))
     assert exc_info.value.args[0] == f"Incorrect tag {expected} payload"
+
+#
+# Tests for custom hook decorator and class
+#
+
+
+def test_tag_hook(impl):
+    @tag_hook(6000)
+    def reverse(value):
+        return value[::-1]
+
+    decoded = impl.loads(unhexlify("d917706548656c6c6f"), tag_hook=reverse)
+    assert decoded == u"olleH"
+
+
+def test_tag_hook_cyclic(impl):
+    class DummyType(object):
+        def __init__(self, value):
+            self.value = value
+
+    @tag_hook(3000, dynamic=True)
+    def unmarshal_dummy(handler, value):
+        instance = DummyType.__new__(DummyType)
+        handler.decoder.set_shareable(instance)
+        instance.value = handler.decoder.decode_from_bytes(value)
+        return instance
+
+    decoded = impl.loads(
+        unhexlify("D81CD90BB849D81CD90BB843D81D00"), tag_hook=unmarshal_dummy
+    )
+    assert isinstance(decoded, DummyType)
+    assert decoded.value.value is decoded
+
+def test_tag_hook_subclass(impl):
+    class MyHook(TagHandler):
+        def __init__(self):
+            super().__init__()
+            self.handlers[6000] = self.reversed
+
+        @staticmethod
+        def reversed(value):
+            return value[::-1]
+
+    decoded = impl.loads(unhexlify("d917706548656c6c6f"), tag_hook=MyHook())
+    assert decoded == u"olleH"
+
+def test_tag_hook_custom_class(impl):
+    class MyHook:
+        def __call__(self, tag):
+            return {"$tag": tag.tag, "$value": tag.value}
+
+    decoded = impl.loads(unhexlify("C16F6E6F7420612074696D657374616D70"), tag_hook=MyHook())
+    assert decoded == {"$tag": 1, "$value": "not a timestamp"}

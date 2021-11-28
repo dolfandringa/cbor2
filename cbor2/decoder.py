@@ -60,7 +60,8 @@ class CBORDecoder:
     def __init__(self, fp, tag_hook=None, object_hook=None, str_errors="strict"):
         self.fp = fp
         self.tag_hook = tag_hook or TagHandler()
-        self.tag_hook.decoder = self
+        if hasattr(self.tag_hook, "_set_decoder"):
+            self.tag_hook._set_decoder(self)
         self.object_hook = object_hook
         self.str_errors = str_errors
         self._share_index = None

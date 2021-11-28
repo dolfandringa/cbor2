@@ -6,6 +6,7 @@ from decimal import Decimal
 from email.parser import Parser
 from fractions import Fraction
 from ipaddress import ip_address, ip_network
+from types import MethodType
 
 from .types import CBORDecodeValueError, CBORTag
 
@@ -38,6 +39,9 @@ class TagHandler(object):
         if handler is None:
             return tag
         return handler(tag.value)
+
+    def _set_decoder(self, decoder):
+        self.decoder = decoder
 
     @staticmethod
     def isodatetime(x):
@@ -133,3 +137,18 @@ class TagHandler(object):
                 except (TypeError, ValueError):
                     break
         raise CBORDecodeValueError("invalid ipnetwork value %r" % net_map)
+
+_HOOK_INSTANCE = TagHandler()
+
+def tag_hook(tag_id, dynamic=False, instance=None):
+    instance = instance or _HOOK_INSTANCE
+    if dynamic:
+        def decorator(fun):
+            method = MethodType(fun, instance)
+            instance.handlers.update({tag_id: method })
+            return instance
+    else:
+        def decorator(fun):
+            instance.handlers.update({tag_id: fun})
+            return instance
+    return decorator
