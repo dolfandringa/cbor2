@@ -146,6 +146,28 @@ PyObject _undefined_obj = {
 
 // CBORSimpleValue namedtuple ////////////////////////////////////////////////
 
+int
+_CBOR2_init_SimpleValue(void)
+{
+    PyObject *cbor2_types;
+
+
+    // from cbor2.types import FrozenDict
+    cbor2_types = PyImport_ImportModule("cbor2.types");
+    if (!cbor2_types)
+        goto error;
+    _CBOR2_SimpleValue = PyObject_GetAttrString(cbor2_types, "CBORSimpleValue");
+    Py_DECREF(cbor2_types);
+    if (!_CBOR2_SimpleValue)
+        goto error;
+    return 0;
+error:
+    PyErr_SetString(PyExc_ImportError,
+            "unable to import CBORSimpleValue from cbor2.types");
+    return -1;
+}
+
+
 PyTypeObject CBORSimpleValueType;
 
 static PyStructSequence_Field CBORSimpleValueFields[] = {
@@ -665,6 +687,7 @@ PyObject *_CBOR2_Fraction = NULL;
 PyObject *_CBOR2_FrozenDict = NULL;
 PyObject *_CBOR2_UUID = NULL;
 PyObject *_CBOR2_TagHandler = NULL;
+PyObject *_CBOR2_SimpleValue = NULL;
 PyObject *_CBOR2_Parser = NULL;
 PyObject *_CBOR2_re_compile = NULL;
 PyObject *_CBOR2_datestr_re = NULL;
@@ -684,6 +707,7 @@ cbor2_free(PyObject *m)
     Py_CLEAR(_CBOR2_Fraction);
     Py_CLEAR(_CBOR2_UUID);
     Py_CLEAR(_CBOR2_TagHandler);
+    Py_CLEAR(_CBOR2_SimpleValue);
     Py_CLEAR(_CBOR2_Parser);
     Py_CLEAR(_CBOR2_re_compile);
     Py_CLEAR(_CBOR2_datestr_re);

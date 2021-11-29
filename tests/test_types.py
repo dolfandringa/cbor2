@@ -1,5 +1,5 @@
 import pytest
-from cbor2.types import FrozenDict
+from cbor2.types import FrozenDict, CBORSimpleValue
 
 
 def test_undefined_bool(impl):
@@ -86,15 +86,15 @@ def test_tag_repr(impl):
     assert repr(impl.CBORTag(600, "blah")) == "CBORTag(600, 'blah')"
 
 
-def test_simple_value_repr(impl):
-    assert repr(impl.CBORSimpleValue(1)) == "<CBORSimpleValue._001: 1>"
+def test_simple_value_repr():
+    assert repr(CBORSimpleValue(1)) == "<CBORSimpleValue._001: 1>"
 
 
-def test_simple_value_equals(impl):
-    tag1 = impl.CBORSimpleValue(1)
-    tag2 = impl.CBORSimpleValue(1)
-    tag3 = impl.CBORSimpleValue(32)
-    tag4 = impl.CBORSimpleValue(99)
+def test_simple_value_equals():
+    tag1 = CBORSimpleValue(1)
+    tag2 = CBORSimpleValue(1)
+    tag3 = CBORSimpleValue(32)
+    tag4 = CBORSimpleValue(99)
     assert tag1 == tag2
     assert tag1 == 1
     assert not tag2 == "32"
@@ -111,17 +111,17 @@ def test_simple_value_equals(impl):
     assert tag1 <= tag4
 
 
-def test_simple_ordering(impl):
+def test_simple_ordering():
     randints = [9, 7, 3, 8, 4, 0, 2, 5, 6, 1]
-    expected = [impl.CBORSimpleValue(v) for v in range(10)]
-    disordered = [impl.CBORSimpleValue(v) for v in randints]
+    expected = [CBORSimpleValue(v) for v in range(10)]
+    disordered = [CBORSimpleValue(v) for v in randints]
     assert expected == sorted(disordered)
     assert expected == sorted(randints)
 
 
-def test_simple_value_too_big(impl):
+def test_simple_value_too_big():
     with pytest.raises(ValueError) as exc:
-        impl.CBORSimpleValue(256)
+        CBORSimpleValue(256)
         assert str(exc.value) == '256 is not a valid CBORSimpleValue'
 
 

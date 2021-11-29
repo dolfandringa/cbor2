@@ -5,7 +5,8 @@ import struct
 import sys
 
 import pytest
-from cbor2.types import FrozenDict
+
+from cbor2.types import FrozenDict, CBORSimpleValue
 
 
 def test_fp_attr(impl):
@@ -315,7 +316,7 @@ def test_simple_value(impl, simple_value):
 
 def test_simple_val_as_key(impl):
     decoded = impl.loads(unhexlify("A1F86301"))
-    assert decoded == {impl.CBORSimpleValue(99): 1}
+    assert decoded == {CBORSimpleValue(99): 1}
 
 
 def test_premature_end_of_stream(impl):

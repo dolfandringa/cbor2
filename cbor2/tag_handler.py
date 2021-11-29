@@ -43,6 +43,18 @@ class TagHandler(object):
     def _set_decoder(self, decoder):
         self.decoder = decoder
 
+    def register(self, tag_id, dynamic=False):
+        if dynamic:
+            def decorator(fun):
+                method = MethodType(fun, self)
+                self.handlers.update({tag_id: method })
+                return self
+        else:
+            def decorator(fun):
+                self.handlers.update({tag_id: fun})
+                return self
+        return decorator
+
     @staticmethod
     def isodatetime(x):
         return dt.datetime.fromisoformat(x.replace("Z", "+00:00"))
@@ -88,10 +100,13 @@ class TagHandler(object):
 
     def stringref(self, index):
         # Semantic tag 25
-        if self.decoder._stringref_namespace is None:
+        ns = None
+        if hasattr(self.decoder, "_stringref_namespace"):
+            ns = getattr(self.decoder, "_stringref_namespace")
+        if ns is None:
             raise CBORDecodeValueError("string reference outside of namespace")
         try:
-            value = self.decoder._stringref_namespace[index]
+            value = ns[index]
         except IndexError:
             raise CBORDecodeValueError("string reference %d not found" % index)
 
@@ -138,17 +153,4 @@ class TagHandler(object):
                     break
         raise CBORDecodeValueError("invalid ipnetwork value %r" % net_map)
 
-_HOOK_INSTANCE = TagHandler()
 
-def tag_hook(tag_id, dynamic=False, instance=None):
-    instance = instance or _HOOK_INSTANCE
-    if dynamic:
-        def decorator(fun):
-            method = MethodType(fun, instance)
-            instance.handlers.update({tag_id: method })
-            return instance
-    else:
-        def decorator(fun):
-            instance.handlers.update({tag_id: fun})
-            return instance
-    return decorator

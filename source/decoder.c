@@ -965,19 +965,23 @@ decode_semantic(CBORDecoderObject *self, uint8_t subtype)
 {
     // major type 6
     uint64_t tagnum;
+    DecodeOptions options = DECODE_UNSHARED;
     PyObject *tag, *value, *ret = NULL;
 
     if (decode_length(self, subtype, &tagnum, NULL) == 0) {
         switch (tagnum) {
+            case 25:    ret = CBORDecoder_decode_stringref(self);       break;
             case 28:    ret = CBORDecoder_decode_shareable(self);       break;
             case 29:    ret = CBORDecoder_decode_sharedref(self);       break;
             case 256:   ret = CBORDecoder_decode_stringref_ns(self);    break;
 
             default:
                 tag = CBORTag_New(tagnum);
+                if (tagnum == 258)
+                    options |= DECODE_IMMUTABLE;
                 if (tag) {
                     set_shareable(self, tag);
-                    value = decode(self, DECODE_UNSHARED);
+                    value = decode(self, options);
                     if (value) {
                         if (CBORTag_SetValue(tag, value) == 0) {
                             if (self->tag_hook == Py_None) {
@@ -1588,19 +1592,12 @@ static PyObject *
 decode_special(CBORDecoderObject *self, uint8_t subtype)
 {
     // major type 7
-    PyObject *tag, *ret = NULL;
+    PyObject *ret = NULL;
 
     if ((subtype) < 20) {
-        tag = PyStructSequence_New(&CBORSimpleValueType);
-        if (tag) {
-            PyStructSequence_SET_ITEM(tag, 0, PyLong_FromLong(subtype));
-            if (PyStructSequence_GET_ITEM(tag, 0)) {
-                Py_INCREF(tag);
-                ret = tag;
-            }
-            Py_DECREF(tag);
-            // XXX Set shareable?
-        }
+        if (!_CBOR2_SimpleValue && _CBOR2_init_SimpleValue() == -1)
+            return NULL;
+        ret = PyObject_CallFunctionObjArgs(_CBOR2_SimpleValue, PyLong_FromLong(subtype), NULL);
     } else {
         switch (subtype) {
             case 20: Py_RETURN_FALSE;
@@ -1627,22 +1624,16 @@ decode_special(CBORDecoderObject *self, uint8_t subtype)
 static PyObject *
 CBORDecoder_decode_simple_value(CBORDecoderObject *self)
 {
-    PyObject *tag, *ret = NULL;
+    PyObject *tag = NULL;
     uint8_t buf;
 
     if (fp_read(self, (char*)&buf, sizeof(uint8_t)) == 0) {
-        tag = PyStructSequence_New(&CBORSimpleValueType);
-        if (tag) {
-            PyStructSequence_SET_ITEM(tag, 0, PyLong_FromLong(buf));
-            if (PyStructSequence_GET_ITEM(tag, 0)) {
-                Py_INCREF(tag);
-                ret = tag;
-            }
-            Py_DECREF(tag);
-        }
+        if (!_CBOR2_SimpleValue && _CBOR2_init_SimpleValue() == -1)
+            return NULL;
+        tag = PyObject_CallFunctionObjArgs(_CBOR2_SimpleValue, PyLong_FromLong(buf), NULL);
     }
     // XXX Set shareable?
-    return ret;
+    return tag;
 }
 
 

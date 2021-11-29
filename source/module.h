@@ -94,6 +94,7 @@ extern PyObject *_CBOR2_Fraction;
 extern PyObject *_CBOR2_FrozenDict;
 extern PyObject *_CBOR2_UUID;
 extern PyObject *_CBOR2_TagHandler;
+extern PyObject *_CBOR2_SimpleValue;
 extern PyObject *_CBOR2_Parser;
 extern PyObject *_CBOR2_re_compile;
 extern PyObject *_CBOR2_datestr_re;
@@ -108,6 +109,7 @@ int _CBOR2_init_Fraction(void);
 int _CBOR2_init_FrozenDict(void);
 int _CBOR2_init_UUID(void);
 int _CBOR2_init_TagHandler(void);
+int _CBOR2_init_SimpleValue(void);
 int _CBOR2_init_Parser(void);
 int _CBOR2_init_re_compile(void); // also handles datestr_re
 int _CBOR2_init_ip_address(void);

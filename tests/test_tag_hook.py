@@ -7,7 +7,7 @@ from fractions import Fraction
 from ipaddress import ip_address, ip_network
 from uuid import UUID
 import re
-from cbor2.tag_handler import tag_hook, TagHandler
+from cbor2.tag_handler import TagHandler
 from cbor2.types import CBORDecodeError
 
 #
@@ -109,6 +109,12 @@ def test_bigfloat(impl):
 def test_rational(impl):
     decoded = impl.loads(unhexlify("d81e820205"))
     assert decoded == Fraction(2, 5)
+
+
+def test_bad_rational(impl):
+    with pytest.raises(ValueError) as excinfo:
+        decoded = impl.loads(unhexlify("d81e81196AB3"))
+    assert str(excinfo.value) == "Incorrect tag 30 payload"
 
 
 def test_regex(impl):
@@ -306,7 +312,7 @@ def test_set(impl):
     [("c400", "4"), ("c500", "5")],
 )
 def test_decimal_payload_unpacking(impl, data, expected):
-    with pytest.raises(impl.CBORDecodeValueError) as exc_info:
+    with pytest.raises(ValueError) as exc_info:
         impl.loads(unhexlify(data))
     assert exc_info.value.args[0] == f"Incorrect tag {expected} payload"
 
@@ -316,7 +322,8 @@ def test_decimal_payload_unpacking(impl, data, expected):
 
 
 def test_tag_hook(impl):
-    @tag_hook(6000)
+    tag_hook = TagHandler()
+    @tag_hook.register(6000)
     def reverse(value):
         return value[::-1]
 
@@ -329,7 +336,8 @@ def test_tag_hook_cyclic(impl):
         def __init__(self, value):
             self.value = value
 
-    @tag_hook(3000, dynamic=True)
+    tag_hook = TagHandler()
+    @tag_hook.register(3000, dynamic=True)
     def unmarshal_dummy(handler, value):
         instance = DummyType.__new__(DummyType)
         handler.decoder.set_shareable(instance)
