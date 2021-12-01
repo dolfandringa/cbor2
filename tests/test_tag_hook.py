@@ -1,4 +1,4 @@
-import pytest
+import re
 from binascii import unhexlify
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -6,7 +6,9 @@ from email.message import Message
 from fractions import Fraction
 from ipaddress import ip_address, ip_network
 from uuid import UUID
-import re
+
+import pytest
+
 from cbor2.tag_handler import TagHandler
 from cbor2.types import CBORDecodeError
 
@@ -113,7 +115,7 @@ def test_rational(impl):
 
 def test_bad_rational(impl):
     with pytest.raises(ValueError) as excinfo:
-        decoded = impl.loads(unhexlify("d81e81196AB3"))
+        impl.loads(unhexlify("d81e81196AB3"))
     assert str(excinfo.value) == "Incorrect tag 30 payload"
 
 
@@ -158,6 +160,7 @@ def test_ipaddress(impl, payload, expected):
     payload = unhexlify(payload)
     result = impl.loads(payload)
     assert result == expected
+
 
 def test_macaddress(impl):
     payload, expected = ("d9010446010203040506", (260, b"\x01\x02\x03\x04\x05\x06"))
@@ -316,6 +319,7 @@ def test_decimal_payload_unpacking(impl, data, expected):
         impl.loads(unhexlify(data))
     assert exc_info.value.args[0] == f"Incorrect tag {expected} payload"
 
+
 #
 # Tests for custom hook decorator and class
 #
@@ -323,12 +327,13 @@ def test_decimal_payload_unpacking(impl, data, expected):
 
 def test_tag_hook(impl):
     tag_hook = TagHandler()
+
     @tag_hook.register(6000)
     def reverse(value):
         return value[::-1]
 
     decoded = impl.loads(unhexlify("d917706548656c6c6f"), tag_hook=reverse)
-    assert decoded == u"olleH"
+    assert decoded == "olleH"
 
 
 def test_tag_hook_cyclic(impl):
@@ -337,6 +342,7 @@ def test_tag_hook_cyclic(impl):
             self.value = value
 
     tag_hook = TagHandler()
+
     @tag_hook.register(3000, dynamic=True)
     def unmarshal_dummy(handler, value):
         instance = DummyType.__new__(DummyType)
@@ -350,6 +356,7 @@ def test_tag_hook_cyclic(impl):
     assert isinstance(decoded, DummyType)
     assert decoded.value.value is decoded
 
+
 def test_tag_hook_subclass(impl):
     class MyHook(TagHandler):
         def __init__(self):
@@ -361,15 +368,19 @@ def test_tag_hook_subclass(impl):
             return value[::-1]
 
     decoded = impl.loads(unhexlify("d917706548656c6c6f"), tag_hook=MyHook())
-    assert decoded == u"olleH"
+    assert decoded == "olleH"
+
 
 def test_tag_hook_custom_class(impl):
     if hasattr(impl.CBORDecoder, "decode_epoch_datetime"):
         assert True
         return
+
     class MyHook:
         def __call__(self, tag):
             return {"$tag": tag.tag, "$value": tag.value}
 
-    decoded = impl.loads(unhexlify("C16F6E6F7420612074696D657374616D70"), tag_hook=MyHook())
+    decoded = impl.loads(
+        unhexlify("C16F6E6F7420612074696D657374616D70"), tag_hook=MyHook()
+    )
     assert decoded == {"$tag": 1, "$value": "not a timestamp"}

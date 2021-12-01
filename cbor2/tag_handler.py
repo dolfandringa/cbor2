@@ -45,14 +45,18 @@ class TagHandler(object):
 
     def register(self, tag_id, dynamic=False):
         if dynamic:
+
             def decorator(fun):
                 method = MethodType(fun, self)
-                self.handlers.update({tag_id: method })
+                self.handlers.update({tag_id: method})
                 return self
+
         else:
+
             def decorator(fun):
                 self.handlers.update({tag_id: fun})
                 return self
+
         return decorator
 
     @staticmethod
@@ -152,5 +156,3 @@ class TagHandler(object):
                 except (TypeError, ValueError):
                     break
         raise CBORDecodeValueError("invalid ipnetwork value %r" % net_map)
-
-

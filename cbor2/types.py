@@ -1,7 +1,7 @@
 from collections.abc import Mapping
+from enum import IntEnum
 from functools import total_ordering
 from reprlib import recursive_repr
-from enum import IntEnum
 
 
 class CBORError(Exception):
@@ -44,7 +44,7 @@ class CBORTag:
     __slots__ = "tag", "value"
 
     def __init__(self, tag, value):
-        if not isinstance(tag, int) or tag not in range(2**64):
+        if not isinstance(tag, int) or tag not in range(2 ** 64):
             raise TypeError("CBORTag tags must be positive integers less than 2**64")
         self.tag = tag
         self.value = value
@@ -66,10 +66,10 @@ class CBORTag:
     def __hash__(self):
         return hash((self.tag, self.value))
 
-_simple_values_lo = [(f'_{n:03d}', n) for n in range(20)]
-_simple_values_hi = [(f'_{n:03d}', n) for n in range(32, 256)]
-CBORSimpleValue = IntEnum('CBORSimpleValue', _simple_values_lo + _simple_values_hi)
 
+_simple_values_lo = [(f"_{n:03d}", n) for n in range(20)]
+_simple_values_hi = [(f"_{n:03d}", n) for n in range(32, 256)]
+CBORSimpleValue = IntEnum("CBORSimpleValue", _simple_values_lo + _simple_values_hi)
 
 
 class FrozenDict(Mapping):

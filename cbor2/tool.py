@@ -11,17 +11,15 @@ import sys
 import uuid
 from collections import OrderedDict
 from datetime import datetime
-from functools import partial
 
-from .types import FrozenDict, CBORSimpleValue
 from .tag_handler import TagHandler
+from .types import CBORSimpleValue, FrozenDict
 
 try:
-    from _cbor2 import CBORDecoder, load
-    from _cbor2 import CBORTag, undefined
+    from _cbor2 import CBORDecoder, load, undefined
 except ImportError:
     from .decoder import CBORDecoder, load
-    from .types import CBORTag, undefined
+    from .types import undefined
 
 
 default_encoders = OrderedDict(
@@ -44,8 +42,10 @@ default_encoders = OrderedDict(
     ]
 )
 
+
 class TagHook(TagHandler):
-    __slots__ = ('ignore_tags',)
+    __slots__ = ("ignore_tags",)
+
     def __init__(self, ignore_tags=None):
         super().__init__()
         self.handlers[24] = self.embedded
@@ -60,7 +60,6 @@ class TagHook(TagHandler):
                 return f"CBORTag:{tag.tag}:{tag.value!r}"
             return {"$tag": tag.tag, "$value": tag.value}
         return handler(tag.value)
-
 
     def embedded(self, value):
         return self.decoder.decode_from_bytes(value)
@@ -191,7 +190,7 @@ def main():
 
     if options.tag_ignore:
         ignore_s = options.tag_ignore.split(",")
-        droptags = {int(n) for n in ignore_s if (len(n) and n[0].isdigit())}
+        droptags = set(int(n) for n in ignore_s if (len(n) and n[0].isdigit()))
     else:
         droptags = set()
 

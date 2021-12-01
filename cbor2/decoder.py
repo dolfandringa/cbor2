@@ -3,6 +3,7 @@ import struct
 import sys
 from io import BytesIO
 
+from .tag_handler import TagHandler
 from .types import (
     CBORDecodeEOF,
     CBORDecodeValueError,
@@ -12,8 +13,6 @@ from .types import (
     break_marker,
     undefined,
 )
-
-from .tag_handler import TagHandler
 
 timestamp_re = re.compile(
     r"^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)"
@@ -390,10 +389,11 @@ class CBORDecoder:
             try:
                 shared = self._shareables[index]
             except IndexError:
-                raise CBORDecodeValueError('shared reference %d not found' % index)
+                raise CBORDecodeValueError("shared reference %d not found" % index)
             if shared is None:
                 raise CBORDecodeValueError(
-                    'shared value %d has not been initialized' % index)
+                    "shared value %d has not been initialized" % index
+                )
             else:
                 return shared
         if tagnum == 256:

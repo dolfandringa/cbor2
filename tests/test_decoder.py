@@ -1,12 +1,12 @@
 import math
-from binascii import unhexlify
-from io import BytesIO
 import struct
 import sys
+from binascii import unhexlify
+from io import BytesIO
 
 import pytest
 
-from cbor2.types import FrozenDict, CBORSimpleValue
+from cbor2.types import CBORSimpleValue, FrozenDict
 
 
 def test_fp_attr(impl):

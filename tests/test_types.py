@@ -1,5 +1,6 @@
 import pytest
-from cbor2.types import FrozenDict, CBORSimpleValue
+
+from cbor2.types import CBORSimpleValue, FrozenDict
 
 
 def test_undefined_bool(impl):
