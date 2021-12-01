@@ -13,14 +13,15 @@ from collections import OrderedDict
 from datetime import datetime
 from functools import partial
 
-from .decoder import CBORDecoder, load
-from .types import FrozenDict
+from .types import FrozenDict, CBORSimpleValue
 from .tag_handler import TagHandler
 
-#try:
-    #from _cbor2 import CBORSimpleValue, CBORTag, undefined
-#except ImportError:
-from .types import CBORSimpleValue, CBORTag, undefined
+try:
+    from _cbor2 import CBORDecoder, load
+    from _cbor2 import CBORTag, undefined
+except ImportError:
+    from .decoder import CBORDecoder, load
+    from .types import CBORTag, undefined
 
 
 default_encoders = OrderedDict(
