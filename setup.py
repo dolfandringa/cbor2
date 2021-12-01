@@ -30,26 +30,29 @@ def check_libc():
 cpython = platform.python_implementation() == "CPython"
 windows = sys.platform.startswith("win")
 use_c_ext = os.environ.get("CBOR2_BUILD_C_EXTENSION", None)
-if use_c_ext == "1":
-    build_c_ext = True
-elif use_c_ext == "0":
-    build_c_ext = False
+if use_c_ext is not None:
+    build_c_ext = use_c_ext.lower() in ("1", "true")
 else:
     build_c_ext = cpython and (windows or check_libc())
 
 # Enable GNU features for libc's like musl, should have no effect
 # on Apple/BSDs
-if build_c_ext and not windows:
-    gnu_flag = ["-D_GNU_SOURCE"]
-else:
-    gnu_flag = []
+cflags=['-std=c99']
+if not windows:
+    cflags.append('-D_GNU_SOURCE')
+
+# If you want to fully customize tag handling set this to "1" or "true"
+fast_tags = os.environ.get("CBOR2_DISABLE_FAST_TAGS", "0").lower() in ("0", "false")
+print('fast_tags', fast_tags)
+if fast_tags and build_c_ext:
+    cflags.append('-DCBOR2_FAST_TAGS')
 
 if build_c_ext:
     _cbor2 = Extension(
         "_cbor2",
         # math.h routines are built-in to MSVCRT
-        libraries=["m"] if not windows else [],
-        extra_compile_args=["-std=c99"] + gnu_flag,
+        libraries=['m'] if not windows else [],
+        extra_compile_args=cflags,
         sources=[
             "source/module.c",
             "source/encoder.c",

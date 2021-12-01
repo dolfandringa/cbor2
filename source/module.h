@@ -1,3 +1,5 @@
+#ifndef CBOR2_MODULE
+#define CBOR2_MODULE
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
@@ -120,3 +122,4 @@ int init_canonical_encoders(void);
 // Encoder registries
 extern PyObject *_CBOR2_default_encoders;
 extern PyObject *_CBOR2_canonical_encoders;
+#endif

@@ -1,3 +1,5 @@
+#ifndef CBOR2_DECODER
+#define CBOR2_DECODER
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <stdbool.h>
@@ -20,3 +22,5 @@ extern PyTypeObject CBORDecoderType;
 PyObject * CBORDecoder_new(PyTypeObject *, PyObject *, PyObject *);
 int CBORDecoder_init(CBORDecoderObject *, PyObject *, PyObject *);
 PyObject * CBORDecoder_decode(CBORDecoderObject *);
+
+#endif
