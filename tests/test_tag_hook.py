@@ -372,15 +372,11 @@ def test_tag_hook_subclass(impl):
 
 
 def test_tag_hook_custom_class(impl):
-    if hasattr(impl.CBORDecoder, "decode_epoch_datetime"):
-        assert True
-        return
-
     class MyHook:
         def __call__(self, tag):
             return {"$tag": tag.tag, "$value": tag.value}
 
     decoded = impl.loads(
-        unhexlify("C16F6E6F7420612074696D657374616D70"), tag_hook=MyHook()
+        unhexlify("C16F6E6F7420612074696D657374616D70"), tag_hook=MyHook(), disable_builtin_tags=True
     )
     assert decoded == {"$tag": 1, "$value": "not a timestamp"}

@@ -14,6 +14,7 @@ typedef struct {
     PyObject *stringref_namespace;
     PyObject *str_errors;
     bool immutable;
+    bool disable_builtin_tags;
     Py_ssize_t shared_index;
 } CBORDecoderObject;
 

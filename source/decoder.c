@@ -59,9 +59,7 @@ static PyObject * CBORDecoder_decode_sharedref(CBORDecoderObject *);
 static PyObject * CBORDecoder_decode_stringref(CBORDecoderObject *);
 static PyObject * CBORDecoder_decode_stringref_ns(CBORDecoderObject *);
 
-#if CBOR2_FAST_TAGS
 #include "fast_tags.h"
-#endif
 
 // Constructors and destructors //////////////////////////////////////////////
 
@@ -127,6 +125,7 @@ CBORDecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
         self->object_hook = Py_None;
         self->str_errors = PyBytes_FromString("strict");
         self->immutable = false;
+        self->disable_builtin_tags = false;
         self->shared_index = -1;
     }
     return (PyObject *) self;
@@ -142,14 +141,16 @@ int
 CBORDecoder_init(CBORDecoderObject *self, PyObject *args, PyObject *kwargs)
 {
     static char *keywords[] = {
-        "fp", "tag_hook", "object_hook", "str_errors", NULL
+        "fp", "tag_hook", "object_hook", "str_errors", "disable_builtin_tags", NULL
     };
     PyObject *fp = NULL, *tag_hook = NULL, *object_hook = NULL,
              *str_errors = NULL;
+    int disable_builtin_tags = 0;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|OOO", keywords,
-                &fp, &tag_hook, &object_hook, &str_errors))
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|OOOp", keywords,
+                &fp, &tag_hook, &object_hook, &str_errors, &disable_builtin_tags))
         return -1;
+    self->disable_builtin_tags = disable_builtin_tags != 0;
     if (!tag_hook) {
         // set a default tag_hook
         if (!_CBOR2_TagHandler && _CBOR2_init_TagHandler() == -1)
@@ -958,64 +959,78 @@ decode_semantic(CBORDecoderObject *self, uint8_t subtype)
     PyObject *tag, *value, *ret = NULL;
 
     if (decode_length(self, subtype, &tagnum, NULL) == 0) {
-        switch (tagnum) {
-#if CBOR2_FAST_TAGS
-            case 0:     ret = CBORDecoder_decode_datetime_string(self); break;
-            case 1:     ret = CBORDecoder_decode_epoch_datetime(self);  break;
-            case 2:     ret = CBORDecoder_decode_positive_bignum(self); break;
-            case 3:     ret = CBORDecoder_decode_negative_bignum(self); break;
-            case 4:     ret = CBORDecoder_decode_fraction(self);        break;
-            case 5:     ret = CBORDecoder_decode_bigfloat(self);        break;
-            case 25:    ret = CBORDecoder_decode_stringref(self);       break;
-            case 28:    ret = CBORDecoder_decode_shareable(self);       break;
-            case 29:    ret = CBORDecoder_decode_sharedref(self);       break;
-            case 30:    ret = CBORDecoder_decode_rational(self);        break;
-            case 35:    ret = CBORDecoder_decode_regexp(self);          break;
-            case 36:    ret = CBORDecoder_decode_mime(self);            break;
-            case 37:    ret = CBORDecoder_decode_uuid(self);            break;
-            case 256:   ret = CBORDecoder_decode_stringref_ns(self);    break;
-            case 258:   ret = CBORDecoder_decode_set(self);             break;
-            case 260:   ret = CBORDecoder_decode_ipaddress(self);       break;
-            case 261:   ret = CBORDecoder_decode_ipnetwork(self);       break;
-            case 55799: ret = CBORDecoder_decode_self_describe_cbor(self);
-                break;
-#else
-            case 25:    ret = CBORDecoder_decode_stringref(self);       break;
-            case 28:    ret = CBORDecoder_decode_shareable(self);       break;
-            case 29:    ret = CBORDecoder_decode_sharedref(self);       break;
-            case 256:   ret = CBORDecoder_decode_stringref_ns(self);    break;
-#endif
-            default:
-                tag = CBORTag_New(tagnum);
-                if (tagnum == 258)
-                    options |= DECODE_IMMUTABLE;
-                if (tag) {
-                    set_shareable(self, tag);
-                    value = decode(self, options);
-                    if (value) {
-                        if (CBORTag_SetValue(tag, value) == 0) {
-                            if (self->tag_hook == Py_None) {
-                                Py_INCREF(tag);
-                                ret = tag;
-                            } else {
-                                ret = PyObject_CallFunctionObjArgs(
-                                        self->tag_hook, tag, NULL);
-                                set_shareable(self, ret);
-                            }
+        if (self->disable_builtin_tags) {
+            tag = CBORTag_New(tagnum);
+            if (tagnum == 258)
+                options |= DECODE_IMMUTABLE;
+            if (tag) {
+                value = decode(self, options);
+                if (value) {
+                    if (CBORTag_SetValue(tag, value) == 0) {
+                        if (self->tag_hook == Py_None) {
+                            Py_INCREF(tag);
+                            ret = tag;
+                        } else {
+                            ret = PyObject_CallFunctionObjArgs(
+                                    self->tag_hook, tag, NULL);
                         }
-                        Py_DECREF(value);
                     }
-                    Py_DECREF(tag);
+                    Py_DECREF(value);
                 }
-                break;
+                Py_DECREF(tag);
+            }
+        } else {
+            switch (tagnum) {
+                case 0:     ret = CBORDecoder_decode_datetime_string(self); break;
+                case 1:     ret = CBORDecoder_decode_epoch_datetime(self);  break;
+                case 2:     ret = CBORDecoder_decode_positive_bignum(self); break;
+                case 3:     ret = CBORDecoder_decode_negative_bignum(self); break;
+                case 4:     ret = CBORDecoder_decode_fraction(self);        break;
+                case 5:     ret = CBORDecoder_decode_bigfloat(self);        break;
+                case 25:    ret = CBORDecoder_decode_stringref(self);       break;
+                case 28:    ret = CBORDecoder_decode_shareable(self);       break;
+                case 29:    ret = CBORDecoder_decode_sharedref(self);       break;
+                case 30:    ret = CBORDecoder_decode_rational(self);        break;
+                case 35:    ret = CBORDecoder_decode_regexp(self);          break;
+                case 36:    ret = CBORDecoder_decode_mime(self);            break;
+                case 37:    ret = CBORDecoder_decode_uuid(self);            break;
+                case 256:   ret = CBORDecoder_decode_stringref_ns(self);    break;
+                case 258:   ret = CBORDecoder_decode_set(self);             break;
+                case 260:   ret = CBORDecoder_decode_ipaddress(self);       break;
+                case 261:   ret = CBORDecoder_decode_ipnetwork(self);       break;
+                case 55799: ret = CBORDecoder_decode_self_describe_cbor(self);
+                    break;
+                default:
+                    tag = CBORTag_New(tagnum);
+                    if (tagnum == 258)
+                        options |= DECODE_IMMUTABLE;
+                    if (tag) {
+                        set_shareable(self, tag);
+                        value = decode(self, options);
+                        if (value) {
+                            if (CBORTag_SetValue(tag, value) == 0) {
+                                if (self->tag_hook == Py_None) {
+                                    Py_INCREF(tag);
+                                    ret = tag;
+                                } else {
+                                    ret = PyObject_CallFunctionObjArgs(
+                                            self->tag_hook, tag, NULL);
+                                    set_shareable(self, ret);
+                                }
+                            }
+                            Py_DECREF(value);
+                        }
+                        Py_DECREF(tag);
+                    }
+                    break;
+            }
         }
     }
     return ret;
 }
 
-#if CBOR2_FAST_TAGS
+// inline fast tag handlers
 #include "fast_tags.c"
-#endif
 
 // CBORDecoder.decode_shareable(self)
 static PyObject *
@@ -1375,7 +1390,6 @@ static PyMethodDef CBORDecoder_methods[] = {
         "decode a semantically tagged value from the input"},
     {"decode_special", (PyCFunction) CBORDecoder_decode_special, METH_O,
         "decode a special value from the input"},
-#if CBOR2_FAST_TAGS
     {"decode_datetime_string",
         (PyCFunction) CBORDecoder_decode_datetime_string, METH_NOARGS,
         "decode a date-time string from the input"},
@@ -1418,18 +1432,6 @@ static PyMethodDef CBORDecoder_methods[] = {
         "decode an IPv4Network or IPv6Network from the input"},
     {"decode_self_describe_cbor", (PyCFunction) CBORDecoder_decode_self_describe_cbor, METH_NOARGS,
         "decode a data item after a self-describe CBOR tag"},
-#else
-    {"decode_shareable",
-        (PyCFunction) CBORDecoder_decode_shareable, METH_NOARGS,
-        "decode a shareable value from the input"},
-    {"decode_sharedref", (PyCFunction) CBORDecoder_decode_sharedref, METH_NOARGS,
-        "decode a shared reference from the input"},
-    {"decode_stringref",
-        (PyCFunction) CBORDecoder_decode_stringref, METH_NOARGS,
-        "decode a string reference from the input"},
-    {"decode_stringref_namespace", (PyCFunction) CBORDecoder_decode_stringref_ns, METH_NOARGS,
-        "decode a string reference namespace from the input"},
-#endif
     {"decode_simple_value",
         (PyCFunction) CBORDecoder_decode_simple_value, METH_NOARGS,
         "decode a CBORSimpleValue from the input"},

@@ -41,11 +41,6 @@ cflags=['-std=c99']
 if not windows:
     cflags.append('-D_GNU_SOURCE')
 
-# If you want to fully customize tag handling set this to "1" or "true"
-fast_tags = os.environ.get("CBOR2_DISABLE_FAST_TAGS", "0").lower() in ("0", "false")
-print('fast_tags', fast_tags)
-if fast_tags and build_c_ext:
-    cflags.append('-DCBOR2_FAST_TAGS')
 
 if build_c_ext:
     _cbor2 = Extension(

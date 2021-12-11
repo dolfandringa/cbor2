@@ -10,6 +10,53 @@ from types import MethodType
 
 from .types import CBORDecodeValueError, CBORTag
 
+if hasattr(dt.datetime, "fromisoformat"):
+    fromisoformat = dt.datetime.fromisoformat
+else:
+    timestamp_re = re.compile(
+        r"^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)"
+        r"(?:\.(\d{1,6})\d*)?(?:Z|([+-]\d\d):(\d\d))$"
+    )
+
+    def fromisoformat(value):
+        match = timestamp_re.match(value)
+        if match:
+            (
+                year,
+                month,
+                day,
+                hour,
+                minute,
+                second,
+                secfrac,
+                offset_h,
+                offset_m,
+            ) = match.groups()
+            if secfrac is None:
+                microsecond = 0
+            else:
+                microsecond = int("{:<06}".format(secfrac))
+
+            if offset_h:
+                tz = dt.timezone(
+                    dt.timedelta(hours=int(offset_h), minutes=int(offset_m))
+                )
+            else:
+                tz = dt.timezone.utc
+
+            return dt.datetime(
+                int(year),
+                int(month),
+                int(day),
+                int(hour),
+                int(minute),
+                int(second),
+                microsecond,
+                tz,
+            )
+        else:
+            raise CBORDecodeValueError("Invalid isoformat string: {!r}".format(value))
+
 
 class TagHandler(object):
 
@@ -61,7 +108,7 @@ class TagHandler(object):
 
     @staticmethod
     def isodatetime(x):
-        return dt.datetime.fromisoformat(x.replace("Z", "+00:00"))
+        return fromisoformat(x.replace("Z", "+00:00"))
 
     @staticmethod
     def epochdatetime(x):

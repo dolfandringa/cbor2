@@ -1,4 +1,3 @@
-import re
 import struct
 import sys
 from io import BytesIO
@@ -13,12 +12,6 @@ from .types import (
     break_marker,
     undefined,
 )
-
-timestamp_re = re.compile(
-    r"^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)"
-    r"(?:\.(\d{1,6})\d*)?(?:Z|([+-]\d\d):(\d\d))$"
-)
-
 
 class CBORDecoder:
     """
@@ -41,6 +34,9 @@ class CBORDecoder:
         dictionary. This callback is invoked for each deserialized
         :class:`dict` object. The return value is substituted for the dict in
         the deserialized output.
+    :param disable_builtin_tags:
+        Pass all tags to the tag_hook, note that the decoder can no longer handle
+        stringrefs and sharedrefs.
 
     .. _CBOR: https://cbor.io/
     """
@@ -54,10 +50,12 @@ class CBORDecoder:
         "_immutable",
         "_str_errors",
         "_stringref_namespace",
+        "_disable_builtin_tags",
     )
 
-    def __init__(self, fp, tag_hook=None, object_hook=None, str_errors="strict"):
+    def __init__(self, fp, tag_hook=None, object_hook=None, str_errors="strict", disable_builtin_tags=False):
         self.fp = fp
+        self._disable_builtin_tags = disable_builtin_tags
         self.tag_hook = tag_hook or TagHandler()
         if hasattr(self.tag_hook, "_set_decoder"):
             self.tag_hook._set_decoder(self)
@@ -376,7 +374,7 @@ class CBORDecoder:
         # Major tag 6
         tagnum = self._decode_length(subtype)
         # special handling for tags that modify the decoder
-        if tagnum == 28:
+        if tagnum == 28 and not self._disable_builtin_tags:
             old_index = self._share_index
             self._share_index = len(self._shareables)
             self._shareables.append(None)
@@ -384,7 +382,7 @@ class CBORDecoder:
                 return self._decode()
             finally:
                 self._share_index = old_index
-        if tagnum == 29:
+        if tagnum == 29 and not self._disable_builtin_tags:
             index = self._decode(unshared=True)
             try:
                 shared = self._shareables[index]
@@ -396,7 +394,7 @@ class CBORDecoder:
                 )
             else:
                 return shared
-        if tagnum == 256:
+        if tagnum == 256 and not self._disable_builtin_tags:
             old_namespace = self._stringref_namespace
             self._stringref_namespace = []
             value = self._decode(unshared=True)
@@ -406,7 +404,8 @@ class CBORDecoder:
         self.set_shareable(tag)
         immutable = self.immutable or tagnum == 258
         tag.value = self._decode(unshared=True, immutable=immutable)
-        tag = self._tag_hook(tag)
+        if self._tag_hook is not None:
+            tag = self._tag_hook(tag)
         return self.set_shareable(tag)
 
     def decode_special(self, subtype):
