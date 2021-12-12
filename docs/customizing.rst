@@ -15,6 +15,7 @@ for any newly decoded ``dict`` objects, and is mostly useful for implementing a 
 custom type serialization scheme. Unless your requirements restrict you to JSON compatible types
 only, it is recommended to use ``tag_hook`` for this purpose.
 
+
 Using the CBOR tags for custom types
 ------------------------------------
 
@@ -30,14 +31,24 @@ to add a custom tag in the data stream, with the payload as the value::
         # Tag number 4000 was chosen arbitrarily
         encoder.encode(CBORTag(4000, [value.x, value.y]))
 
+    encoded = cbor2.dumps(Point(1,2), default=default_encoder)
+
+The TagHandler object can be used as a decorator with the :meth:`~cbor2.tag_handler.TagHandler.register` method that pairs a tag_id with a funcion that decodes the payload value.
+
 The corresponding ``tag_hook`` would be::
 
-    def tag_hook(decoder, tag, shareable_index=None):
-        if tag.tag != 4000:
-            return tag
+    from cbor2.tag_handler import TagHandler
 
-        # tag.value is now the [x, y] list we serialized before
-        return Point(*tag.value)
+    tag_hook = TagHandler()
+
+    @tag_hook.register(4000)
+    def unmarshal_point(value):
+        # value is now the [x, y] list we serialized before
+        return Point(*value)
+
+    decoded = cbor2.loads(encoded, tag_hook=tag_hook)
+
+Note that the ``unmarshal_point`` function has been replaced by the ``tag_hook`` object so you could pass either as the tag_hook argument.
 
 Using dicts to carry custom types
 ---------------------------------
@@ -94,18 +105,19 @@ On the decoder side, you will need to initialize an empty instance for shared va
 the object's state (which may contain references to it) is decoded.
 This is done with the :meth:`~cbor2.encoder.CBORDecoder.set_shareable` method::
 
-    def tag_hook(decoder, tag, shareable_index=None):
-        # Return all other tags as-is
-        if tag.tag != 3000:
-            return tag
+    from cbor2.tag_handler import TagHandler
 
+    tag_hook = TagHandler()
+
+    @tag_hook.register(3000, dynamic=True)
+    def unmarshal_mytype(handler, value):
         # Create a raw instance before initializing its state to make it possible for cyclic
         # references to work
         instance = MyType.__new__(MyType)
-        decoder.set_shareable(shareable_index, instance)
+        handler.decoder.set_shareable(instance)
 
         # Separately decode the state of the new object and then apply it
-        state = decoder.decode_from_bytes(tag.value)
+        state = handler.decoder.decode_from_bytes(tag.value)
         instance.__dict__.update(state)
         return instance
 
@@ -127,14 +139,13 @@ Since the CBOR specification allows any type to be used as a key in the mapping 
 provides a flag that indicates it is expecting an immutable (and by implication hashable) type. If
 your custom class cannot be used this way you can raise an exception if this flag is set::
 
-    def tag_hook(decoder, tag, shareable_index=None):
-        if tag.tag != 3000:
-            return tag
+    @tag_hook.register(3000, dynamic=True)
+    def unmarshal_mytype(handler, value):
 
-        if decoder.immutable:
+        if handler.decoder.immutable:
             raise CBORDecodeException('MyType cannot be used as a key or set member')
 
-        return MyType(*tag.value)
+        return MyType(value)
 
 An example where the data could be used as a dict key::
 
@@ -142,10 +153,55 @@ An example where the data could be used as a dict key::
 
     Pair = namedtuple('Pair', 'first second')
 
-    def tag_hook(decoder, tag, shareable_index=None):
-        if tag.tag != 4000:
-            return tag
-
-        return Pair(*tag.value)
+    @tag_hook.register(4000)
+    def unmarshal_pair(value):
+        return Pair(value)
 
 The ``object_hook`` can check for the immutable flag in the same way.
+
+Subclassing the TagHandler
+--------------------------
+
+Instead of using it as a decorator you can subclass TagHandler::
+
+    from cbor2.tag_handler import TagHandler
+
+    class MyHook(TagHandler):
+        def __init__(self):
+            super().__init__()
+            self.handlers[6000] = self.reversed
+            self.handlers[6001] = self.capitalize
+
+        @staticmethod
+        def reversed(value):
+            return value[::-1]
+
+        def capitalize(self, value):
+            return value.upper()
+
+Replacing the tag handler
+-------------------------
+
+There is always a default tag handler loaded which, if you have the c-module installed, will always be used to decode built in tags. You can disable it entirely and make your custom tag hook responsible for handling all tags::
+
+    class MyHook:
+        def __call__(self, tag):
+            return {"$tag": tag.tag, "$value": tag.value}
+
+    decoded = cbor2.loads(data, tag_hook=MyHook(), disable_builtin_tags=True)
+
+If you provide the method `_set_decoder` then the decoder will pass itself into your custom tag handler allowing more sophisticated decoding steps, like checking if the decoder is decoding a key type::
+
+    class MyHook:
+        def __init__(self):
+            self.decoder = None
+
+        def _set_decoder(self, decoder):
+            self.decoder = decoder
+
+        def __call__(self, tag):
+            if self.decoder.immutable:
+                return tuple(("$tag", tag.tag), ("$value", tag.value))
+            return {"$tag": tag.tag, "$value": tag.value}
+
+    decoded = cbor2.loads(data, tag_hook=MyHook(), disable_builtin_tags=True)

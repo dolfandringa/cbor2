@@ -91,6 +91,10 @@ class TagHandler(object):
         self.decoder = decoder
 
     def register(self, tag_id, dynamic=False):
+        """decorator that adds tag_id and the decorated function to
+        the handler. dynamic means that the handler instance is passed as ``self``
+        parameter to the decorated function.
+        returns the handler itself"""
         if dynamic:
 
             def decorator(fun):
