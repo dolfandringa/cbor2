@@ -205,9 +205,13 @@ def main():
                     infile = io.BytesIO(base64.b64decode(infile.read()))
                 try:
                     if sequence:
-                        objs = iterdecode(infile, tag_hook=my_hook, disable_builtin_tags=True)
+                        objs = iterdecode(
+                            infile, tag_hook=my_hook, disable_builtin_tags=True
+                        )
                     else:
-                        objs = (load(infile, tag_hook=my_hook, disable_builtin_tags=True),)
+                        objs = (
+                            load(infile, tag_hook=my_hook, disable_builtin_tags=True),
+                        )
                     for obj in objs:
                         json.dump(
                             key_to_str(obj),

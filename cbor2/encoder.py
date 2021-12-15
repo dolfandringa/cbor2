@@ -637,6 +637,7 @@ default_encoders = OrderedDict(
         (("ipaddress", "IPv6Network"), CBOREncoder.encode_ipnetwork),
         (CBORSimpleValue, CBOREncoder.encode_simple_value),
         (CBORTag, CBOREncoder.encode_semantic),
+        (("_cbor2", "CBORTag"), CBOREncoder.encode_semantic),
         (set, CBOREncoder.encode_set),
         (frozenset, CBOREncoder.encode_set),
     ]

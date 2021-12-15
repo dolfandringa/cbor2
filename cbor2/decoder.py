@@ -13,6 +13,7 @@ from .types import (
     undefined,
 )
 
+
 class CBORDecoder:
     """
     The CBORDecoder class implements a fully featured `CBOR`_ decoder with
@@ -53,7 +54,14 @@ class CBORDecoder:
         "_disable_builtin_tags",
     )
 
-    def __init__(self, fp, tag_hook=None, object_hook=None, str_errors="strict", disable_builtin_tags=False):
+    def __init__(
+        self,
+        fp,
+        tag_hook=None,
+        object_hook=None,
+        str_errors="strict",
+        disable_builtin_tags=False,
+    ):
         self.fp = fp
         self._disable_builtin_tags = disable_builtin_tags
         self.tag_hook = tag_hook or TagHandler()
