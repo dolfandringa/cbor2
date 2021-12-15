@@ -65,7 +65,7 @@ def test_fail(impl, tag_hook):
     with pytest.raises(ValueError) as e:
         impl.dumps(myobj(), default=encode_arrays)
     assert (
-        str(e.value) == "unable to serialize <class 'test_extra_arrays.myobj'> instance"
+        str(e.value) == "unable to serialize myobj instance"
     )
 
 

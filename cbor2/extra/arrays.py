@@ -72,7 +72,7 @@ def encode_arrays(encoder, value):
             output = [value.shape, CBORTag(tag_id, value.tobytes("C"))]
             encoder.encode(CBORTag(40, output))
     else:
-        raise CBOREncodeValueError(f"unable to serialize {value.__class__} instance")
+        raise CBOREncodeValueError(f"unable to serialize {value.__class__.__name__} instance")
 
 
 class ArrayHandler(TagHandler):
