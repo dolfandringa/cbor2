@@ -9,9 +9,11 @@ Table of contents
 
    usage
    customizing
-   versionhistory
    Encoder <modules/encoder>
    Decoder <modules/decoder>
    Types <modules/types>
+   Tag Handler <modules/tag_handler>
+   Streams <modules/extra/streams>
+   versionhistory
 
 * :ref:`API reference <modindex>`

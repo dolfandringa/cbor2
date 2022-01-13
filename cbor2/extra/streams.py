@@ -18,6 +18,7 @@ def dump_to_tag(path, obj, **kwargs):
 
 class CBORSequenceWriter(object):
     "Write cbor data to a non-delimited stream, with optional header"
+
     def __init__(self, fp, **kwargs):
         self._encoder = CBOREncoder(fp, **kwargs)
 
@@ -30,7 +31,9 @@ class CBORSequenceWriter(object):
     def write(self, data):
         self._encoder.encode(data)
 
-    def writeheader(self, file_tag=55800, protocol_tag=None, protocol_payload="BOR"):
+    def writeheader(
+        self, file_tag=55800, protocol_tag=0x1EAF1E55, protocol_payload="BOR"
+    ):
         """
         write a file header containing file magic 558000 a protocol identifier tag between
         0x01000000 and 0xFFFFFFFF followed by the string "BOR"
@@ -42,8 +45,9 @@ class CBORSequenceWriter(object):
         self._encoder.encode(CBORTag(file_tag, payload))
 
 
-class CBORListStreamWriter(object):
+class CBORArrayStreamWriter(object):
     "write keys and values to an indefinite length cbor list"
+
     def __init__(self, fp, **kwargs):
         self._encoder = CBOREncoder(fp, **kwargs)
         self._begin = True
@@ -64,6 +68,7 @@ class CBORListStreamWriter(object):
 
 class CBORMapStreamWriter(object):
     "write key, value pairs to an indefinite length cbor map file"
+
     def __init__(self, fp, **kwargs):
         self._encoder = CBOREncoder(fp, **kwargs)
         self._begin = True
@@ -89,7 +94,25 @@ class CBORMapStreamWriter(object):
         self._encoder.encode(value)
 
 
-class CBORStreamReader(object):
+class CBORSequenceReader(object):
+    """
+    Read CBOR items concatenated within a file.
+
+    By default it expects the first item to be a header containing two tags,
+    marking the string BOR::
+
+        D9 D9F8         # tag(55800) CBOR Sequence file magic
+           DA 4F50534E  # tag(1330664270) Protocol identifier tag
+             43         # bytes(3)
+              424F52    # "BOR"
+
+    To recognise this header pass a tuple of expected tags::
+
+        reader = CBORSequenceReader(opened_file, header_tags=(55800, 1330664270))
+
+    To return the header as the first item, just pass the argument ``header_tags=()``
+    """
+
     def __init__(self, fp, header_tags=(55800,), **kwargs):
         self._decoder = CBORDecoder(fp, **kwargs)
         self._header_tags = header_tags
@@ -100,7 +123,7 @@ class CBORStreamReader(object):
                 if value.tag == tag_id:
                     value = value.value
                 else:
-                    raise CBORDecodeValueError(f"unexpected tag {value.tag}")
+                    raise CBORDecodeValueError(f"unexpected tag 0x{value.tag:08x}")
             except AttributeError:
                 pass
         return value
@@ -119,7 +142,7 @@ class CBORStreamReader(object):
 
 if __name__ == "__main__":
     with open("testy.cbor", "wb") as f1:
-        with CBORListStreamWriter(f1) as writer:
+        with CBORArrayStreamWriter(f1) as writer:
             for n in range(20):
                 writer.write(n)
     with open("testz.cbor", "wb") as f:
@@ -133,6 +156,6 @@ if __name__ == "__main__":
                 w3.write({"mynum": n})
     dump_to_tag("testj.cbor", 17.3)
     with open("testk.cbor", "rb") as f:
-        reader = CBORStreamReader(f, header_tags=(55800, 1668546672))
+        reader = CBORSequenceReader(f, header_tags=(55800, 1668546672))
         for item in reader.readitems():
             print(item)

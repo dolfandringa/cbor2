@@ -33,7 +33,8 @@ to add a custom tag in the data stream, with the payload as the value::
 
     encoded = cbor2.dumps(Point(1,2), default=default_encoder)
 
-The TagHandler object can be used as a decorator with the :meth:`~cbor2.tag_handler.TagHandler.register` method that pairs a tag_id with a funcion that decodes the payload value.
+The TagHandler object can be used as a decorator with the :meth:`~cbor2.tag_handler.TagHandler.register`
+method that pairs a tag_id with a function that decodes the payload value.
 
 The corresponding ``tag_hook`` would be::
 
@@ -48,7 +49,8 @@ The corresponding ``tag_hook`` would be::
 
     decoded = cbor2.loads(encoded, tag_hook=tag_hook)
 
-Note that the ``unmarshal_point`` function has been replaced by the ``tag_hook`` object so you could pass either as the tag_hook argument.
+Note that the ``unmarshal_point`` function has been replaced by the ``tag_hook`` object so you could pass
+either as the tag_hook argument.
 
 Using dicts to carry custom types
 ---------------------------------
@@ -91,7 +93,7 @@ substituted with the object marked earlier.
 
 To do this, in ``default`` hooks used with the encoder you will need to use the
 :meth:`~cbor2.encoder.shareable_encoder` decorator on your ``default`` hook function. It will
-automatically automatically add the object to the shared values registry on the encoder and prevent
+automatically add the object to the shared values registry on the encoder and prevent
 it from being serialized twice (instead writing a reference to the data stream)::
 
     @shareable_encoder

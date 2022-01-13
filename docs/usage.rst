@@ -21,6 +21,67 @@ Serializing and deserializing with cbor2 is pretty straightforward::
 
 Some data types, however, require extra considerations, as detailed below.
 
+Dealing with Streams
+--------------------
+
+There are 3 distinct ways of dealing with streaming data to and from files:
+
+Indefinite length Arrays
+++++++++++++++++++++++++
+
+with :class:`~cbor2.extra.streams.CBORArrayStreamWriter`::
+
+    from cbor2.extra.streams import CBORArrayStream
+
+    with open('out.cbor', 'wb') as fp:
+       with CBORArrayStreamWriter(fp) as writer:
+           for item in iterator:
+               writer.write(item)
+
+These files can be read with a single call to ``load`` since they contain a delimited indefinite-length array.
+
+Indefinite length Maps
+++++++++++++++++++++++
+
+with :class:`~cbor2.extra.streams.CBORMapStreamWriter`::
+
+
+   from cbor2.extra.streams import CBORMapStream
+
+   with open('out.cbor', 'wb') as fp:
+       with CBORMapStreamWriter(fp) as writer:
+           for key, item in iterator:
+               writer.write(key, item)
+
+These files can also be read with a single call to ``load``.
+
+CBOR Sequences (RFC8949 section 5.1)
+++++++++++++++++++++++++++++++++++++
+
+with :class:`cbor2.extra.streams.CBORSequenceWriter`::
+
+    with open("out.cbor", "wb") as f:
+        writer = CBORSequenceWriter(f)
+        writer.writeheader(protocol_tag=0xDEADBEEF)
+        for n in (x ** 2 / x ** 3 for x in range(1, 20)):
+            writer.write({"mynum": n})
+
+The ``writeheader`` method writes a leading data item to the file marking it as a CBOR sequence
+(tag 55800), followed by a protocol identifier tag between ``0x01000000`` and ``0xFFFFFFFF`` and then the
+letters "BOR" as the tagged data item. This gives a fixed 12 bytes at the beginning of the file that
+can be used to identify the format. 
+
+To read a CBOR Sequence you can use class:`cbor2.extra.streams.CBORSequenceReader`::
+
+    with open("out.cbor", "rb") as f:
+        reader = CBORSequenceReader(f, header_tags=(55800, 0xDEADBEEF))
+        for item in reader.readitems():
+            print(item)
+
+This will try to match the header tags and raise an error if they don't match. If there is no header,
+you can pass an empty tuple as the ``header_tags`` argument.
+
+
 Date/time handling
 ------------------
 
