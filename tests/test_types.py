@@ -119,6 +119,19 @@ def test_simple_ordering():
     assert expected == sorted(disordered)
     assert expected == sorted(randints)
 
+def test_simple_wierd_values(impl):
+    assert len(impl.dumps(impl.CBORSimpleValue(19))) == 1
+    assert impl.dumps(impl.CBORSimpleValue(32)) == b'\xf8\x20'
+    assert impl.loads(impl.dumps(impl.CBORSimpleValue(20))) is False
+    assert impl.loads(impl.dumps(impl.CBORSimpleValue(21))) is True
+    assert impl.loads(impl.dumps(impl.CBORSimpleValue(22))) is None
+    assert impl.loads(impl.dumps(impl.CBORSimpleValue(23))) is impl.undefined
+
+def test_simple_too_small(impl):
+    with pytest.raises(ValueError) as exc:
+        impl.loads(b'\xf8\x14')
+        assert str(exc.value) == "invalid 2 byte simple value: 0x14"
+
 
 def test_simple_value_too_big():
     with pytest.raises(ValueError) as exc:

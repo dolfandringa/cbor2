@@ -67,7 +67,7 @@ class CBORTag:
         return hash((self.tag, self.value))
 
 
-_simple_values_lo = [(f"_{n:03d}", n) for n in range(20)]
+_simple_values_lo = [(f"_{n:03d}", n) for n in range(24)]
 _simple_values_hi = [(f"_{n:03d}", n) for n in range(32, 256)]
 CBORSimpleValue = IntEnum("CBORSimpleValue", _simple_values_lo + _simple_values_hi)
 

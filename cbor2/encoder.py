@@ -563,7 +563,7 @@ class CBOREncoder:
     #
 
     def encode_simple_value(self, value):
-        if value.value < 20:
+        if value.value < 24:
             self._fp_write(struct.pack(">B", 0xE0 | value.value))
         else:
             self._fp_write(struct.pack(">BB", 0xF8, value.value))

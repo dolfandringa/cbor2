@@ -436,7 +436,12 @@ class CBORDecoder:
 
     def decode_simple_value(self):
         # XXX Set shareable?
-        return CBORSimpleValue(self.read(1)[0])
+        value = self.read(1)[0]
+        if value < 32:
+            raise CBORDecodeValueError(
+                    "invalid 2 byte simple value: 0x%x" % value
+                    )
+        return CBORSimpleValue(value)
 
     def decode_float16(self):
         payload = self.read(2)

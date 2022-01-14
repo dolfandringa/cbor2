@@ -1185,6 +1185,12 @@ CBORDecoder_decode_simple_value(CBORDecoderObject *self)
     uint8_t buf;
 
     if (fp_read(self, (char*)&buf, sizeof(uint8_t)) == 0) {
+        if (buf < 32) {
+            PyErr_Format(
+                _CBOR2_CBORDecodeValueError,
+                "invalid 2 byte simple value: 0x%x", buf);
+            return NULL;
+        }
         if (!_CBOR2_SimpleValue && _CBOR2_init_SimpleValue() == -1)
             return NULL;
         tag = PyObject_CallFunctionObjArgs(_CBOR2_SimpleValue, PyLong_FromLong(buf), NULL);
