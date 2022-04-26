@@ -1,6 +1,8 @@
 import numpy as np
+from functools import partial
 
 from cbor2 import CBORTag, CBOREncodeValueError
+from cbor2 import dump, dumps, load, loads
 from cbor2.tag_handler import TagHandler
 
 # Note: Numpy does not support IEEE binary128 floats. It uses float128 and
@@ -107,3 +109,9 @@ class ArrayHandler(TagHandler):
     def unmarshal_fdarray(value):
         shape, payload = value
         return payload.reshape(*shape, order="F")
+
+
+array_dump = partial(dump, default=encode_arrays)
+array_dumps = partial(dumps, default=encode_arrays)
+array_load = partial(load, tag_hook=ArrayHandler())
+array_loads = partial(loads, tag_hook=ArrayHandler())

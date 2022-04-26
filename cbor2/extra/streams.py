@@ -1,10 +1,10 @@
-from cbor2 import (
+from .. import (
     CBORDecoder,
-    CBORDecodeValueError,
     CBOREncoder,
+    CBORDecodeValueError,
     CBOREncodeValueError,
     CBORTag,
-)
+    )
 
 
 def dump_to_tag(path, obj, **kwargs):
@@ -45,12 +45,13 @@ class CBORSequenceWriter(object):
         self._encoder.encode(CBORTag(file_tag, payload))
 
 
-class CBORArrayStreamWriter(object):
-    "write keys and values to an indefinite length cbor list"
+class IndefiniteWriter(object):
+    initial_byte = None
 
-    def __init__(self, fp, **kwargs):
+    def __init__(self, fp, write_file_magic=True, **kwargs):
         self._encoder = CBOREncoder(fp, **kwargs)
         self._begin = True
+        self._write_file_magic = write_file_magic
 
     def __enter__(self):
         return self
@@ -61,37 +62,61 @@ class CBORArrayStreamWriter(object):
 
     def write(self, data):
         if self._begin:
-            self._encoder.fp.write(b"\xD9\xD9\xF7\x9f")
+            if self._write_file_magic:
+                self._encoder.write(b"\xd9\xd9\xf7")
+            self._encoder.write(self.initial_byte)
             self._begin = False
         self._encoder.encode(data)
 
 
-class CBORMapStreamWriter(object):
+class CBORByteStreamWriter(IndefiniteWriter):
+    """
+    write chunks of bytes to an indefinite length stream
+    (must be all bytes)
+    """
+
+    initial_byte = b"\x5f"
+
+    def write(self, data):
+        if not isinstance(data, bytes):
+            raise ValueError("Not a string")
+        super().write(data)
+
+
+class CBORStringStreamWriter(IndefiniteWriter):
+    """
+    write chunks of unicode strings to an indefinite length stream
+    (must be all strings)
+    """
+
+    initial_byte = b"\x7f"
+
+    def write(self, data):
+        if not isinstance(data, str):
+            raise ValueError("Not a string")
+        super().write(data)
+
+
+class CBORArrayStreamWriter(IndefiniteWriter):
+    "write keys and values to an indefinite length cbor list"
+
+    initial_byte = b"\x9f"
+
+
+class CBORMapStreamWriter(IndefiniteWriter):
     "write key, value pairs to an indefinite length cbor map file"
 
-    def __init__(self, fp, **kwargs):
-        self._encoder = CBOREncoder(fp, **kwargs)
-        self._begin = True
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_typ, exc_val, exc_tb):
-        if exc_typ is None:
-            self._encoder.write(b"\xff")
+    initial_byte = b"\xbf"
 
     def write(self, key, value):
-        if self._begin:
-            self._encoder.fp.write(b"\xD9\xD9\xF7\xbf")
-            self._begin = False
         try:
             hash(key)
         except TypeError as e:
             raise CBOREncodeValueError(
                 f"Cannot encode {key.__class__} as a map key"
             ) from e
-        self._encoder.encode(key)
-        self._encoder.encode(value)
+        super().write(key)
+        super().write(value)
 
 
 class CBORSequenceReader(object):
@@ -141,6 +166,16 @@ class CBORSequenceReader(object):
 
 
 if __name__ == "__main__":
+    with open("testl.cbor", "wb") as f1:
+        with CBORByteStreamWriter(f1) as writer:
+            for n in range(20):
+                data = b"\x00"
+                writer.write(data)
+    with open("tests.cbor", "wb") as f1:
+        with CBORStringStreamWriter(f1) as writer:
+            for n in range(20):
+                data = "zap!"
+                writer.write(data)
     with open("testy.cbor", "wb") as f1:
         with CBORArrayStreamWriter(f1) as writer:
             for n in range(20):
@@ -156,6 +191,6 @@ if __name__ == "__main__":
                 w3.write({"mynum": n})
     dump_to_tag("testj.cbor", 17.3)
     with open("testk.cbor", "rb") as f:
-        reader = CBORSequenceReader(f, header_tags=(55800, 1668546672))
+        reader = CBORSequenceReader(f, header_tags=())
         for item in reader.readitems():
-            print(item)
+            pass #dprint(item)
