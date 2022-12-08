@@ -79,7 +79,7 @@ class CBORByteStreamWriter(IndefiniteWriter):
 
     def write(self, data):
         if not isinstance(data, bytes):
-            raise ValueError("Not a string")
+            raise ValueError("Not a byte sequence")
         super().write(data)
 
 
