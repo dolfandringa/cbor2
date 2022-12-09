@@ -16,10 +16,10 @@ from .tag_handler import TagHandler
 from .types import CBORSimpleValue, FrozenDict
 
 try:
-    from _cbor2 import CBORDecoder, load, undefined
+    from _cbor2 import CBORDecoder, CBORTag, load, undefined
 except ImportError:
     from .decoder import CBORDecoder, load
-    from .types import undefined
+    from .types import CBORTag, undefined
 
 
 default_encoders = OrderedDict(
