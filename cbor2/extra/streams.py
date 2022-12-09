@@ -1,10 +1,10 @@
 from .. import (
     CBORDecoder,
-    CBOREncoder,
     CBORDecodeValueError,
+    CBOREncoder,
     CBOREncodeValueError,
     CBORTag,
-    )
+)
 
 
 def dump_to_tag(path, obj, **kwargs):
@@ -16,7 +16,7 @@ def dump_to_tag(path, obj, **kwargs):
         encoder.encode(CBORTag(55799, obj))
 
 
-class CBORSequenceWriter(object):
+class CBORSequenceWriter:
     "Write cbor data to a non-delimited stream, with optional header"
 
     def __init__(self, fp, **kwargs):
@@ -45,7 +45,7 @@ class CBORSequenceWriter(object):
         self._encoder.encode(CBORTag(file_tag, payload))
 
 
-class IndefiniteWriter(object):
+class IndefiniteWriter:
     initial_byte = None
 
     def __init__(self, fp, write_file_magic=True, **kwargs):
@@ -119,7 +119,7 @@ class CBORMapStreamWriter(IndefiniteWriter):
         super().write(value)
 
 
-class CBORSequenceReader(object):
+class CBORSequenceReader:
     """
     Read CBOR items concatenated within a file.
 
@@ -187,10 +187,10 @@ if __name__ == "__main__":
     with open("testk.cbor", "wb") as f:
         with CBORSequenceWriter(f) as w3:
             w3.writeheader(protocol_tag=1668546672)  # senml
-            for n in (x ** 2 / x ** 3 for x in range(1, 20)):
+            for n in (x**2 / x**3 for x in range(1, 20)):
                 w3.write({"mynum": n})
     dump_to_tag("testj.cbor", 17.3)
     with open("testk.cbor", "rb") as f:
         reader = CBORSequenceReader(f, header_tags=())
         for item in reader.readitems():
-            pass #dprint(item)
+            pass  # dprint(item)

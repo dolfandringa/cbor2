@@ -474,4 +474,3 @@ CBORDecoder_decode_self_describe_cbor(CBORDecoderObject *self)
     // semantic tag 55799
     return decode(self, DECODE_NORMAL);
 }
-

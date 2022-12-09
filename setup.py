@@ -37,16 +37,16 @@ else:
 
 # Enable GNU features for libc's like musl, should have no effect
 # on Apple/BSDs
-cflags=['-std=c99']
+cflags = ["-std=c99"]
 if not windows:
-    cflags.append('-D_GNU_SOURCE')
+    cflags.append("-D_GNU_SOURCE")
 
 
 if build_c_ext:
     _cbor2 = Extension(
         "_cbor2",
         # math.h routines are built-in to MSVCRT
-        libraries=['m'] if not windows else [],
+        libraries=["m"] if not windows else [],
         extra_compile_args=cflags,
         sources=[
             "source/module.c",

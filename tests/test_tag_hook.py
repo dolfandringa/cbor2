@@ -128,9 +128,10 @@ def test_regex(impl):
 def test_mime(impl):
     decoded = impl.loads(
         unhexlify(
-            "d824787b436f6e74656e742d547970653a20746578742f706c61696e3b20636861727365743d2269736f2d38"
-            "3835392d3135220a4d494d452d56657273696f6e3a20312e300a436f6e74656e742d5472616e736665722d45"
-            "6e636f64696e673a2071756f7465642d7072696e7461626c650a0a48656c6c6f203d413475726f"
+            "d824787b436f6e74656e742d547970653a20746578742f706c61696e3b20636861727365743d2269736f"
+            "2d383835392d3135220a4d494d452d56657273696f6e3a20312e300a436f6e74656e742d5472616e7366"
+            "65722d456e636f64696e673a2071756f7465642d7072696e7461626c650a0a48656c6c6f203d41347572"
+            "6f"
         )
     )
     assert isinstance(decoded, Message)
@@ -238,7 +239,7 @@ def test_immutable_shared_reference(impl):
     decoded = impl.loads(unhexlify("d90102d81c82d81c82d81c83010203d81d02d81d02"))
     a = [item for item in decoded if len(item) == 3][0]
     b = [item for item in decoded if len(item) == 2][0]
-    assert decoded == set(((a, a), a))
+    assert decoded == {(a, a), a}
     assert b[0] is a
     assert b[1] is a
 
@@ -337,7 +338,7 @@ def test_tag_hook(impl):
 
 
 def test_tag_hook_cyclic(impl):
-    class DummyType(object):
+    class DummyType:
         def __init__(self, value):
             self.value = value
 
@@ -377,6 +378,8 @@ def test_tag_hook_custom_class(impl):
             return {"$tag": tag.tag, "$value": tag.value}
 
     decoded = impl.loads(
-        unhexlify("C16F6E6F7420612074696D657374616D70"), tag_hook=MyHook(), disable_builtin_tags=True
+        unhexlify("C16F6E6F7420612074696D657374616D70"),
+        tag_hook=MyHook(),
+        disable_builtin_tags=True,
     )
     assert decoded == {"$tag": 1, "$value": "not a timestamp"}

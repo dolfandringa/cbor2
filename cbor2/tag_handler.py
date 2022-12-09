@@ -35,7 +35,7 @@ else:
             if secfrac is None:
                 microsecond = 0
             else:
-                microsecond = int("{:<06}".format(secfrac))
+                microsecond = int(f"{secfrac:<06}")
 
             if offset_h:
                 tz = dt.timezone(
@@ -55,10 +55,10 @@ else:
                 tz,
             )
         else:
-            raise CBORDecodeValueError("Invalid isoformat string: {!r}".format(value))
+            raise CBORDecodeValueError(f"Invalid isoformat string: {value!r}")
 
 
-class TagHandler(object):
+class TagHandler:
 
     __slots__ = ("handlers", "decoder")
 

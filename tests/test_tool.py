@@ -5,7 +5,6 @@ from io import BytesIO, TextIOWrapper
 import pytest
 
 import cbor2.tool
-import pytest
 
 
 @pytest.mark.parametrize(

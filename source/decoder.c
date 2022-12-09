@@ -246,7 +246,7 @@ _CBORDecoder_set_tag_hook(CBORDecoderObject *self, PyObject *value,
         if (!set_decode_result)
             return -1;
     }
-        
+
 
     tmp = self->tag_hook;
     Py_INCREF(value);

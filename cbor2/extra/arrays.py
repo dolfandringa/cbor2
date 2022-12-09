@@ -1,8 +1,8 @@
-import numpy as np
 from functools import partial
 
-from cbor2 import CBORTag, CBOREncodeValueError
-from cbor2 import dump, dumps, load, loads
+import numpy as np
+
+from cbor2 import CBOREncodeValueError, CBORTag, dump, dumps, load, loads
 from cbor2.tag_handler import TagHandler
 
 # Note: Numpy does not support IEEE binary128 floats. It uses float128 and
@@ -74,7 +74,9 @@ def encode_arrays(encoder, value):
             output = [value.shape, CBORTag(tag_id, value.tobytes("C"))]
             encoder.encode(CBORTag(40, output))
     else:
-        raise CBOREncodeValueError(f"unable to serialize {value.__class__.__name__} instance")
+        raise CBOREncodeValueError(
+            f"unable to serialize {value.__class__.__name__} instance"
+        )
 
 
 class ArrayHandler(TagHandler):

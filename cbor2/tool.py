@@ -190,7 +190,7 @@ def main():
 
     if options.tag_ignore:
         ignore_s = options.tag_ignore.split(",")
-        droptags = set(int(n) for n in ignore_s if (len(n) and n[0].isdigit()))
+        droptags = {int(n) for n in ignore_s if (len(n) and n[0].isdigit())}
     else:
         droptags = set()
 

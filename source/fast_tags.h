@@ -12,5 +12,3 @@ static PyObject * CBORDecoder_decode_ipaddress(CBORDecoderObject *);
 static PyObject * CBORDecoder_decode_ipnetwork(CBORDecoderObject *);
 static PyObject * CBORDecoder_decode_self_describe_cbor(CBORDecoderObject *);
 static PyObject * CBORDecoder_decode_set(CBORDecoderObject *);
-
-

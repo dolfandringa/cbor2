@@ -69,7 +69,7 @@ with :class:`cbor2.extra.streams.CBORSequenceWriter`::
 The ``writeheader`` method writes a leading data item to the file marking it as a CBOR sequence
 (tag 55800), followed by a protocol identifier tag between ``0x01000000`` and ``0xFFFFFFFF`` and then the
 letters "BOR" as the tagged data item. This gives a fixed 12 bytes at the beginning of the file that
-can be used to identify the format. 
+can be used to identify the format.
 
 To read a CBOR Sequence you can use class:`cbor2.extra.streams.CBORSequenceReader`::
 
