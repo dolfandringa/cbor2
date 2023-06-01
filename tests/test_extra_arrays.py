@@ -29,6 +29,9 @@ def test_smallints(impl, tag_hook, dtype):
     assert np.array_equal(payload, decoded)
 
 
+@pytest.mark.skipif(
+    not hasattr(np, "float128"), reason="requires 128 bit float support in numpy"
+)
 def test_bigfloat(impl, tag_hook):
     payload = np.array(range(20), dtype="<f16")
     encoded = impl.dumps(payload, default=encode_arrays)
