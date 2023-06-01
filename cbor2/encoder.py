@@ -3,7 +3,7 @@ import re
 import struct
 from collections import OrderedDict, defaultdict
 from contextlib import contextmanager
-from datetime import date, datetime, time, tzinfo
+from datetime import date, datetime, time, timedelta, timezone, tzinfo
 from functools import wraps
 from io import BytesIO
 from sys import modules
@@ -16,6 +16,19 @@ from .types import (
     FrozenDict,
     undefined,
 )
+
+
+def round_timezone(tz):
+    """
+    Rounds a python timezone to the nearest minute so the output timestamp
+    is RFC3339 compliant
+    """
+    offset = tz.utcoffset(datetime.fromtimestamp(0))
+    delta = timedelta(minutes=1)
+    mod = offset % delta
+    if mod < delta / 2:
+        return timezone(offset - mod)
+    return timezone(offset + (delta - mod))
 
 
 def shareable_encoder(func):
@@ -489,6 +502,9 @@ class CBOREncoder:
                 timestamp = timegm(value.utctimetuple()) + value.microsecond / 1000000
             self.encode_semantic(CBORTag(1, timestamp))
         else:
+            if value.tzinfo != timezone.utc:
+                new_tz = round_timezone(value.tzinfo)
+                value = value.replace(tzinfo=new_tz)
             datestring = value.isoformat().replace("+00:00", "Z")
             self.encode_semantic(CBORTag(0, datestring))
 

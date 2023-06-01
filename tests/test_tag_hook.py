@@ -82,6 +82,16 @@ def test_bad_datetime(impl):
     assert str(excinfo.value) == "Invalid isoformat string: '0000-123-01'"
 
 
+def test_odd_timezones(impl):
+    # Python outputs timezones with fractions of a minute offsets
+    # This is not supported on decode or by the CBOR spec
+    myzone = timezone(timedelta(seconds=1))
+    mydt = datetime(2023, 6, 1, 16, 44, tzinfo=myzone)
+    encoded = impl.dumps(mydt)
+    decoded = impl.loads(encoded)
+    assert decoded.tzinfo == timezone.utc
+
+
 def test_positive_bignum(impl):
     # Example from RFC 8949 section 3.4.3.
     decoded = impl.loads(unhexlify("c249010000000000000000"))
